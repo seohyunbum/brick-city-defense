@@ -1,19 +1,36 @@
-# 🧱 레고 시티 — 브릭 몬스터 방어전
+# 🧱 브릭 시티 — 브릭 몬스터 방어전
 아이와 셀프 게임 제작용
 
-사진 한 장(레고 시티 디오라마 1인칭 시점)을 그대로 3D로 옮긴 **1인칭 방어 게임**.
+블록 완구 도시 디오라마의 촉감을 3D로 표현한 **독립 1인칭 방어 게임**.
 경찰서·횡단보도·빨간 SUV·경찰차·타워크레인·헬리콥터·시민 미니피그가 있는 거리에
 브릭 몬스터가 몰려온다. 시민을 지키면서 웨이브 10까지 버티면 승리.
 
 ### 실행
 
-- **온라인 플레이·친구 공유**: <https://seohyunbum.github.io/lego-city-game/>
+- **온라인 플레이·친구 공유**: <https://seohyunbum.github.io/brick-city-defense/>
 - **Windows 바탕화면 아이콘 설치**:
   ```powershell
   powershell -ExecutionPolicy Bypass -File .\scripts\install-desktop-shortcut.ps1
   ```
 - **아이용**: `index.html` 을 더블클릭 (인터넷 없어도 됨. three.js 를 저장소에 같이 넣어두었다)
-- 개발/검증: `node scripts/smoke.mjs` (playwright 필요 — 콘솔 오류·조작·웨이브·드로우콜을 한 번에 확인)
+- **개발 환경 준비**: `npm ci` · **전체 검증**: `npm run verify`
+
+### 품질 계약
+
+현재 버전은 플레이 가능한 단일 스테이지 프로토타입이다. 문서와 게이트를 갖췄다는 사실이 곧 콘텐츠가
+고품질 목표에 도달했다는 뜻은 아니다. `docs/PRODUCTION_PLAN.md`의 P0가 끝나고 실제 하드웨어 검증을
+통과하기 전에는 "고퀄리티 완성판"으로 판정하지 않는다.
+
+- 게임 설계: [`docs/GAME_DESIGN_SPEC.md`](docs/GAME_DESIGN_SPEC.md)
+- 기술 구조: [`docs/TECHNICAL_ARCHITECTURE.md`](docs/TECHNICAL_ARCHITECTURE.md)
+- 아트·오디오: [`docs/ART_AUDIO_BIBLE.md`](docs/ART_AUDIO_BIBLE.md)
+- 외부 자산 조달: [`docs/EXTERNAL_ASSET_ACQUISITION.md`](docs/EXTERNAL_ASSET_ACQUISITION.md)
+- 접근성·아동안전: [`docs/UX_ACCESSIBILITY_CHILD_SAFETY.md`](docs/UX_ACCESSIBILITY_CHILD_SAFETY.md)
+- QA·배포: [`docs/QA_PERFORMANCE_RELEASE_GATES.md`](docs/QA_PERFORMANCE_RELEASE_GATES.md)
+- 감사·실행계획: [`docs/AUDIT_2026-08-19.md`](docs/AUDIT_2026-08-19.md), [`docs/PRODUCTION_PLAN.md`](docs/PRODUCTION_PLAN.md)
+
+정적 게이트만 실행하려면 `npm run verify:static`, 브라우저 스모크만 실행하려면 `npm run smoke`를 쓴다.
+CI는 두 검증을 모두 통과한 commit만 GitHub Pages에 배포한다.
 
 ### 손에 무엇을 드는가 (핵심 규칙)
 
@@ -62,10 +79,14 @@
 | `src/audio.js` | WebAudio 즉석 합성 효과음(에셋 파일 없음) |
 | `src/hud.js` | DOM HUD 갱신 |
 | `src/input.js` | 키보드·마우스(포인터 락)·터치 |
-| `src/game.js` | 지휘자: 루프·전투 규칙·렌더 2패스 |
-| `vendor/three.min.js` | three.js r150.1 (UMD, MIT — `vendor/three-LICENSE.txt`) |
+| `src/storage.js` | 점수 저장 adapter(localStorage 차단 시 메모리 fallback) |
+| `src/game.js` | 현재 지휘자+전투 규칙(분리 예정인 감사 부채) |
+| `scripts/quality-gate.mjs` | 문서·자산 SHA·라이선스·브랜드·용량 정적 게이트 |
+| `vendor/three.min.js` | three.js 0.150.1 / REVISION 150 (UMD, MIT) |
 | `scripts/smoke.mjs` | 브라우저 스모크 테스트 + 스크린샷 |
 | `scripts/install-desktop-shortcut.ps1` | GitHub Pages 버전을 Edge 앱 모드로 여는 바탕화면 바로가기 설치 |
 | `assets/icons/brick-city-defense.ico` | Windows 바탕화면 전용 다중 해상도 아이콘 |
 
 `main`에 push되면 GitHub Actions가 정적 게임 파일만 GitHub Pages에 자동 배포한다.
+
+LEGO®는 LEGO Group of companies의 상표이며, LEGO Group은 이 독립 사이트를 후원·승인·보증하지 않습니다.

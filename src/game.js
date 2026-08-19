@@ -73,7 +73,7 @@
     this.state = 'start';        // start | playing | pause | over
     this.wave = 1;
     this.waveBreak = 0;
-    this.best = Number(localStorage.getItem('legocity-best') || 0);
+    this.best = L.Storage.getNumber('brickcity-best', 'legocity-best');
     this.time = 0;
 
     // 스크래치 벡터 (핫패스 할당 금지)
@@ -234,7 +234,7 @@
     this.player.channelTimer = 0;
     if (this.player.score > this.best) {
       this.best = this.player.score;
-      localStorage.setItem('legocity-best', String(this.best));
+      L.Storage.setNumber('brickcity-best', this.best);
     }
     if (document.exitPointerLock) document.exitPointerLock();
     this.hud.show(false);
@@ -608,12 +608,21 @@
   window.addEventListener('DOMContentLoaded', () => {
     try {
       window.LEGO_GAME = new Game();
+      window.BRICK_GAME = window.LEGO_GAME;
     } catch (err) {
       console.error(err);
       const s = document.getElementById('start-screen');
       if (s) {
-        s.innerHTML = '<div class="sheet small"><h2>게임을 시작할 수 없었다</h2>' +
-          '<p class="sub">' + String(err && err.message ? err.message : err) + '</p></div>';
+        s.textContent = '';
+        const sheet = document.createElement('div');
+        sheet.className = 'sheet small';
+        const title = document.createElement('h2');
+        title.textContent = '게임을 시작할 수 없었다';
+        const detail = document.createElement('p');
+        detail.className = 'sub';
+        detail.textContent = String(err && err.message ? err.message : err);
+        sheet.append(title, detail);
+        s.appendChild(sheet);
       }
     }
   });

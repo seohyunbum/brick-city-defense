@@ -1,0 +1,17 @@
+{
+  "name": "brick-city-defense",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "verify:static": "node scripts/quality-gate.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "npm run verify:static && npm run smoke"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

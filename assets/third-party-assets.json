@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "policy_version": "2026-08-19",
+  "assets": [
+    {
+      "id": "three-0.150.1",
+      "status": "in-use",
+      "third_party": true,
+      "category": "runtime-code",
+      "display_name": "three.js",
+      "author": "three.js authors",
+      "source_url": "https://www.npmjs.com/package/three/v/0.150.1",
+      "source_version": "0.150.1 / REVISION 150",
+      "license": "MIT",
+      "license_evidence": "vendor/three-LICENSE.txt",
+      "reviewed_at": "2026-08-19",
+      "commercial_use": true,
+      "modification": true,
+      "redistribution": "allowed with MIT notice",
+      "attribution": "Copyright © 2010-2023 three.js authors",
+      "files": [
+        {
+          "path": "vendor/three.min.js",
+          "role": "vendored UMD runtime",
+          "sha256": "3f67379ed7720d15353b6607d36f16e17c42cfcd8fe4930c09178376e790eca7"
+        },
+        {
+          "path": "vendor/three-LICENSE.txt",
+          "role": "license evidence",
+          "sha256": "a70d6dc2d2a6464ee9ee503b1881d5aa884abdec63b4c7064f0c5ad827a7d2b4"
+        }
+      ]
+    },
+    {
+      "id": "brick-city-defense-icon-2026-08-19",
+      "status": "in-use",
+      "third_party": false,
+      "category": "project-generated-art",
+      "display_name": "Brick City Defense icon",
+      "author": "Project team using OpenAI image generation",
+      "source_url": "urn:openai:image-generation",
+      "source_version": "OpenAI image generation tool; backend model id not exposed",
+      "license": "LicenseRef-Project-Generated",
+      "license_evidence": "docs/ICON_PROVENANCE.md",
+      "reviewed_at": "2026-08-19",
+      "commercial_use": "subject to applicable OpenAI terms and third-party rights review",
+      "modification": true,
+      "redistribution": "project output; no official logos or copied source image used",
+      "files": [
+        {
+          "path": "assets/source/brick-city-defense-icon.png",
+          "role": "source render; not deployed",
+          "sha256": "5e26ba33566835c98fe673fb539e036cd22f214a07a7db403dcfcfb9b64f3b73"
+        },
+        {
+          "path": "assets/icons/brick-city-defense.ico",
+          "role": "Windows shortcut icon",
+          "sha256": "dacfd797755b10d2fca3e03966849a9056d06425ebc6920aae2fa9a8fa26173b"
+        },
+        {
+          "path": "assets/icons/icon-32.png",
+          "role": "browser icon",
+          "sha256": "45272d2adacfd12b57405b2f2efdf46f4d00c7efda659d2d96b942edb92e363b"
+        },
+        {
+          "path": "assets/icons/icon-192.png",
+          "role": "PWA icon",
+          "sha256": "b93eddeab6065a31fb0fc466774b9710958ad58a08a0abeaac0024e93efcb26b"
+        },
+        {
+          "path": "assets/icons/icon-512.png",
+          "role": "PWA and social preview icon",
+          "sha256": "9c870df9cca23dd4a870183f8167fc39c3c57842312ed9f69c23527a257d048c"
+        }
+      ]
+    }
+  ]
+}

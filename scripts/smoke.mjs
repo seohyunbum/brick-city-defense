@@ -8,6 +8,10 @@ import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const MAX_DRAWCALLS = 650;
+const MAX_TRIANGLES = 125000;
+const soakMs = Math.max(0, Number(process.env.SMOKE_SOAK_MS || 3000));
+
 const root = resolve(here, '..');
 const outDir = resolve(process.argv[2] || resolve(root, '.smoke'));
 mkdirSync(outDir, { recursive: true });
@@ -168,6 +172,22 @@ if (over.over !== 'over' || over.restarted !== 'playing' || over.hearts !== 5 ||
   throw new Error('게임오버/재시작 흐름이 깨졌다: ' + JSON.stringify(over));
 }
 console.log('게임오버·재시작 확인:', JSON.stringify(over));
+// 오디오 할당 폭주 방지: 잡음 buffer는 하나, 활성 voice는 cap 이하여야 한다.
+const audioGuard = await page.evaluate(() => {
+  const sfx = window.LEGO_GAME.sfx;
+  sfx.resume();
+  for (let i = 0; i < 100; i++) sfx.flame();
+  for (let i = 0; i < 100; i++) sfx.shoot();
+  return {
+    active: sfx.activeVoices,
+    max: sfx.maxVoices,
+    noiseSamples: sfx.noiseBuffer ? sfx.noiseBuffer.length : 0,
+  };
+});
+if (audioGuard.active > audioGuard.max || audioGuard.noiseSamples <= 0) {
+  throw new Error('오디오 voice/buffer guard 실패: ' + JSON.stringify(audioGuard));
+}
+if (soakMs) await page.waitForTimeout(soakMs);
 
 // 성능: 3초 동안 프레임 수
 const fps = await page.evaluate(async () => {
@@ -194,29 +214,68 @@ await page.evaluate(() => {
 await page.waitForTimeout(500);
 await page.screenshot({ path: resolve(outDir, '06-police-station.png') });
 
-// 드로우콜 수(도시 씬 한 패스 기준. 예산 700 이하 유지)
+// 실제 프레임의 world + postfx quad + hands 패스 합계를 잰다.
 const info = await page.evaluate(() => {
   const g = window.LEGO_GAME;
   const r = g.renderer;
   r.info.autoReset = false;
   r.info.reset();
-  r.render(g.scene, g.camera);
-  const out = { calls: r.info.render.calls, triangles: r.info.render.triangles };
-  r.shadowMap.enabled = false;
-  r.info.reset();
-  r.render(g.scene, g.camera);
-  out.callsNoShadow = r.info.render.calls;
-  r.shadowMap.enabled = true;
+  g.post.renderWorld(g.scene);
+  const worldCalls = r.info.render.calls;
+  const worldTriangles = r.info.render.triangles;
+  r.clearDepth();
+  r.render(g.hands.scene, g.hands.camera);
+  const out = {
+    calls: r.info.render.calls,
+    triangles: r.info.render.triangles,
+    worldCalls,
+    worldTriangles,
+  };
   r.info.autoReset = true;
   return out;
 });
 
+// 저장소 접근이 차단돼도 부팅·플레이·점수 저장 흐름이 살아 있어야 한다.
+const deniedErrors = [];
+const denied = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+denied.on('console', (m) => { if (m.type() === 'error') deniedErrors.push('console: ' + m.text()); });
+denied.on('pageerror', (e) => deniedErrors.push('pageerror: ' + e.message));
+await denied.addInitScript(() => {
+  const deny = () => { throw new DOMException('Storage denied for smoke', 'SecurityError'); };
+  Storage.prototype.getItem = deny;
+  Storage.prototype.setItem = deny;
+});
+await denied.goto('file://' + resolve(root, 'index.html'));
+await denied.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 20000 });
+const storageFlow = await denied.evaluate(() => {
+  const g = window.LEGO_GAME;
+  g.start();
+  g.player.score = 321;
+  g.gameOver(false);
+  return {
+    state: g.state,
+    best: g.best,
+    memory: window.LEGO.Storage._memory['brickcity-best'],
+  };
+});
+if (storageFlow.state !== 'over' || storageFlow.best !== 321 || storageFlow.memory !== '321') {
+  throw new Error('저장소 차단 fallback 실패: ' + JSON.stringify(storageFlow));
+}
+if (deniedErrors.length) {
+  throw new Error('저장소 차단 페이지 오류: ' + deniedErrors.join(' | '));
+}
+await denied.close();
+
 await browser.close();
 
 console.log('FPS(소프트웨어 렌더러 기준):', fps);
-console.log('드로우콜: 그림자 포함', info.calls, '/ 도시만', info.callsNoShadow, '/ 삼각형', info.triangles);
-if (info.calls > 1100) {
-  console.error('드로우콜이 예산(1100)을 넘었다: ' + info.calls);
+console.log('렌더 패스 합계:', JSON.stringify(info));
+if (info.calls > MAX_DRAWCALLS) {
+  console.error(`드로우콜이 예산(${MAX_DRAWCALLS})을 넘었다: ${info.calls}`);
+  process.exit(1);
+}
+if (info.triangles > MAX_TRIANGLES) {
+  console.error(`삼각형이 예산(${MAX_TRIANGLES})을 넘었다: ${info.triangles}`);
   process.exit(1);
 }
 if (errors.length) {

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$GameUrl = "https://seohyunbum.github.io/lego-city-game/",
-    [string]$ShortcutName = "레고 시티 - 브릭 몬스터 방어전"
+    [string]$GameUrl = "https://seohyunbum.github.io/brick-city-defense/",
+    [string]$ShortcutName = "브릭 시티 - 브릭 몬스터 방어전"
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,7 +40,7 @@ $shortcut.TargetPath = $edgePath
 $shortcut.Arguments = "--app=`"$GameUrl`" --start-maximized"
 $shortcut.WorkingDirectory = $repoRoot
 $shortcut.IconLocation = "$iconPath,0"
-$shortcut.Description = "GitHub Pages의 최신 레고 시티 브릭 몬스터 방어전을 실행합니다."
+$shortcut.Description = "GitHub Pages의 최신 브릭 시티 몬스터 방어전을 실행합니다."
 $shortcut.WindowStyle = 3
 $shortcut.Save()
 
