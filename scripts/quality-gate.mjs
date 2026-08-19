@@ -21,8 +21,12 @@ function walk(path) {
   return files;
 }
 
-function sha256(path) {
-  return createHash('sha256').update(readFileSync(join(root, path))).digest('hex');
+function sha256(path, mode = 'bytes') {
+  let data = readFileSync(join(root, path));
+  if (mode === 'text-lf') {
+    data = Buffer.from(data.toString('utf8').replace(/\r\n/gu, '\n'), 'utf8');
+  }
+  return createHash('sha256').update(data).digest('hex');
 }
 
 const requiredDocs = [
@@ -88,7 +92,7 @@ for (const asset of manifest.assets || []) {
       fail(`${asset.id}: 파일 없음 ${file.path}`);
       continue;
     }
-    const actual = sha256(file.path);
+    const actual = sha256(file.path, file.hash_mode);
     if (actual !== file.sha256) fail(`${asset.id}: SHA-256 불일치 ${file.path}`);
   }
   if (asset.license === 'CC-BY-4.0' && !asset.attribution) fail(`${asset.id}: CC-BY attribution 누락`);

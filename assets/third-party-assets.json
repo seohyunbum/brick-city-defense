@@ -22,12 +22,14 @@
         {
           "path": "vendor/three.min.js",
           "role": "vendored UMD runtime",
-          "sha256": "3f67379ed7720d15353b6607d36f16e17c42cfcd8fe4930c09178376e790eca7"
+          "hash_mode": "text-lf",
+          "sha256": "72c8a8302444fb39cb8e04be1f556b2fdca798e606a99b4b37c8cfe3e3ee3272"
         },
         {
           "path": "vendor/three-LICENSE.txt",
           "role": "license evidence",
-          "sha256": "a70d6dc2d2a6464ee9ee503b1881d5aa884abdec63b4c7064f0c5ad827a7d2b4"
+          "hash_mode": "text-lf",
+          "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
         }
       ]
     },
