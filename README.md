@@ -94,3 +94,7 @@ CI는 두 검증을 모두 통과한 commit만 GitHub Pages에 배포한다.
 `main`에 push되면 GitHub Actions가 정적 게임 파일만 GitHub Pages에 자동 배포한다.
 
 LEGO®는 LEGO Group of companies의 상표이며, LEGO Group은 이 독립 사이트를 후원·승인·보증하지 않습니다.
+
+## Graphics pipeline
+
+The game uses an offline-safe PBR brick look: physical ABS finishes, PMREM reflections, ACES tone mapping, selective rounded edges and a readability-capped miniature lens pass. The design, UE5.8 authoring role, CC0 sourcing policy and measurable visual gates are documented in [docs/GRAPHICS_LOOKDEV_PIPELINE.md](docs/GRAPHICS_LOOKDEV_PIPELINE.md).

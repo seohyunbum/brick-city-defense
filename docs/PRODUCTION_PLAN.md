@@ -115,3 +115,7 @@ P2는 P0/P1 기준을 완화할 권한이 없다. 장식 때문에 판독성·�
 ## 10. 최종 완료 정의
 
 P0/P1 task, 자동 CI, target hardware, 20분 soak, first-user 8/10, 자산 manifest/NOTICE, 접근성, 아동안전, BGM/mix, postdeploy SHA, rollback rehearsal가 모두 PASS일 때만 high-quality milestone을 선언한다.
+
+## Graphics foundation milestone — completed 2026-08-20
+
+Implemented PBR ABS finishes, runtime PMREM reflections, ACES tone mapping, selective rounded edges, reduced depth-of-field obstruction and structural/pixel visual gates. Follow-on city content must use the sequence and Definition of Done in [GRAPHICS_LOOKDEV_PIPELINE.md](./GRAPHICS_LOOKDEV_PIPELINE.md); external prop ingestion cannot begin before a single exact asset passes the ledger and browser budgets.

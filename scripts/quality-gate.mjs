@@ -33,6 +33,7 @@ const requiredDocs = [
   'docs/GAME_DESIGN_SPEC.md',
   'docs/TECHNICAL_ARCHITECTURE.md',
   'docs/ART_AUDIO_BIBLE.md',
+  'docs/GRAPHICS_LOOKDEV_PIPELINE.md',
   'docs/EXTERNAL_ASSET_ACQUISITION.md',
   'docs/UX_ACCESSIBILITY_CHILD_SAFETY.md',
   'docs/QA_PERFORMANCE_RELEASE_GATES.md',
@@ -52,6 +53,9 @@ for (const path of ['README.md', 'index.html', 'manifest.webmanifest', 'scripts/
 }
 
 const index = read('index.html');
+const roundedScript = index.indexOf('./src/rounded-box.js');
+const bricksScript = index.indexOf('./src/bricks.js');
+const lookdevScript = index.indexOf('./src/lookdev.js');
 const objectiveScript = index.indexOf('./src/objectives.js');
 const progressionScript = index.indexOf('./src/progression.js');
 const gameScript = index.indexOf('./src/game.js');
@@ -59,12 +63,19 @@ if (objectiveScript < 0 || progressionScript < 0 || gameScript < 0 ||
     objectiveScript > progressionScript || progressionScript > gameScript) {
   fail('Objective/Progression/Game 모듈 로드 순서 불일치');
 }
+if (roundedScript < 0 || bricksScript < 0 || lookdevScript < 0 || roundedScript > bricksScript || bricksScript > lookdevScript) {
+  fail('RoundedBox/Bricks/LookDev 모듈 로드 순서 불일치');
+}
 if (!index.includes('https://seohyunbum.github.io/brick-city-defense/')) fail('canonical Pages URL 불일치');
 if (/<script[^>]+src=["']https?:/iu.test(index) || /@import\s+url\(["']?https?:/iu.test(read('src/style.css'))) {
   fail('CDN 또는 원격 런타임 의존성 발견');
 }
 
 const runtimeCode = [...walk('src'), 'index.html'].map(read).join('\n');
+if (!runtimeCode.includes('THREE.ACESFilmicToneMapping') || !runtimeCode.includes('THREE.MeshPhysicalMaterial') ||
+    !runtimeCode.includes('THREE.PMREMGenerator') || !runtimeCode.includes('RoundedBoxGeometry')) {
+  fail('PBR/ACES/PMREM/라운드 엣지 그래픽 계약 누락');
+}
 if (/\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/u.test(runtimeCode)) {
   fail('own-origin 외 통신 가능 API가 런타임 코드에 추가됨');
 }

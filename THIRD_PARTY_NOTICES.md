@@ -4,7 +4,8 @@ This file covers assets and code currently shipped by Brick City Defense. Candid
 
 ## three-0.150.1
 
-- Component: three.js 0.150.1 / REVISION 150 UMD build
+- Component: three.js 0.150.1 / REVISION 150 UMD build and adapted RoundedBoxGeometry addon
+- Addon source: https://github.com/mrdoob/three.js/blob/r150/examples/jsm/geometries/RoundedBoxGeometry.js
 - Source: https://www.npmjs.com/package/three/v/0.150.1
 - License: MIT
 - Local license evidence: `vendor/three-LICENSE.txt`

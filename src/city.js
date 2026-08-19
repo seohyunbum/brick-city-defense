@@ -405,7 +405,7 @@
     const t = brickTexture(color).clone();
     t.needsUpdate = true;
     t.repeat.set(Math.max(1, Math.round(w / 4)), Math.max(1, Math.round(h / 4)));
-    return new THREE.MeshPhongMaterial({ color: 0xffffff, map: t, specular: 0x9a9a9a, shininess: 70 });
+    return new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t, metalness: 0, roughness: 0.30, clearcoat: 0.55, clearcoatRoughness: 0.18, envMapIntensity: 0.52 });
   }
 
   /** 박스 6면 머티리얼: 지정한 면에만 파사드 무늬 */
@@ -413,7 +413,7 @@
     const tex = facadeTexture(o.wall, o.trim, o.glass === undefined ? 0x2c5f86 : o.glass);
     const front = tex.clone(); front.needsUpdate = true; front.repeat.set(cols, floors);
     const sideT = tex.clone(); sideT.needsUpdate = true; sideT.repeat.set(Math.max(1, cols - 1), floors);
-    const skin = (t) => new THREE.MeshPhongMaterial({ color: 0xffffff, map: t, specular: 0x777777, shininess: 44 });
+    const skin = (t) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: t, metalness: 0, roughness: 0.38, clearcoat: 0.28, clearcoatRoughness: 0.24, envMapIntensity: 0.42 });
     const plain = L.mat(o.wall);
     const f = skin(front), sd = skin(sideT);
     // +X(도로쪽), -X, +Y, -Y, +Z, -Z
@@ -469,13 +469,13 @@
     const g = new THREE.Group();
     const w = 26, d = 30, h = 15;
 
-    const wall = new THREE.Mesh(L.box(w, h, d), brickMaterial(C.white, w, h));
+    const wall = new THREE.Mesh(L.roundedBox(w, h, d), brickMaterial(C.white, w, h));
     wall.position.y = h / 2;
     wall.castShadow = true; wall.receiveShadow = true;
     g.add(wall);
 
     // 파란 지붕 띠 + 지붕 판
-    const band = new THREE.Mesh(L.box(w + 1.2, 2.6, d + 1.2), brickMaterial(C.blue, w, 2.6));
+    const band = new THREE.Mesh(L.roundedBox(w + 1.2, 2.6, d + 1.2), brickMaterial(C.blue, w, 2.6));
     band.position.y = h + 0.6;
     g.add(band);
     const roof = L.plate(C.lightGray, w, d, { height: 1.0 });
@@ -484,25 +484,25 @@
 
     // 정면(도로 쪽 = -X) 유리 + 문
     for (let i = 0; i < 3; i++) {
-      const glass = new THREE.Mesh(L.box(0.4, 8.5, 6.4), L.mat(0x2c5f86, 'glass'));
+      const glass = new THREE.Mesh(L.roundedBox(0.4, 8.5, 6.4), L.mat(0x2c5f86, 'glass'));
       glass.position.set(-w / 2 - 0.1, 5.6, -8 + i * 8.5);
       g.add(glass);
-      const frame = new THREE.Mesh(L.box(0.55, 9.4, 0.6), L.mat(C.white));
+      const frame = new THREE.Mesh(L.roundedBox(0.55, 9.4, 0.6), L.mat(C.white));
       frame.position.set(-w / 2 - 0.15, 5.6, -8 + i * 8.5 - 3.4);
       g.add(frame);
       // 유리 가운데 흰 창살 — 큰 유리가 회색 판처럼 보이지 않게
-      const mullion = new THREE.Mesh(L.box(0.6, 9.4, 0.35), L.mat(C.white));
+      const mullion = new THREE.Mesh(L.roundedBox(0.6, 9.4, 0.35), L.mat(C.white));
       mullion.position.set(-w / 2 - 0.18, 5.6, -8 + i * 8.5);
       g.add(mullion);
-      const sill = new THREE.Mesh(L.box(0.9, 0.6, 7.0), L.mat(C.lightGray));
+      const sill = new THREE.Mesh(L.roundedBox(0.9, 0.6, 7.0), L.mat(C.lightGray));
       sill.position.set(-w / 2 - 0.3, 1.1, -8 + i * 8.5);
       g.add(sill);
     }
     // 유리 자동문
-    const door = new THREE.Mesh(L.box(0.5, 7.5, 5.2), L.mat(0x3a749c, 'glass'));
+    const door = new THREE.Mesh(L.roundedBox(0.5, 7.5, 5.2), L.mat(0x3a749c, 'glass'));
     door.position.set(-w / 2 - 0.2, 4.2, 11.5);
     g.add(door);
-    const doorFrame = new THREE.Mesh(L.box(0.7, 8.4, 6.0), L.mat(C.blue));
+    const doorFrame = new THREE.Mesh(L.roundedBox(0.7, 8.4, 6.0), L.mat(C.blue));
     doorFrame.position.set(-w / 2 - 0.05, 4.2, 11.5);
     g.add(doorFrame);
 
@@ -511,12 +511,12 @@
     sign.rotation.y = -Math.PI / 2;
     sign.position.set(-w / 2 - 0.5, 12.0, 1);
     g.add(sign);
-    const signBack = new THREE.Mesh(L.box(0.4, 4.6, 17), L.mat(C.blue));
+    const signBack = new THREE.Mesh(L.roundedBox(0.4, 4.6, 17), L.mat(C.blue));
     signBack.position.set(-w / 2 - 0.28, 12.0, 1);
     g.add(signBack);
 
     // 금색 경찰 방패 엠블럼
-    const shieldPlate = new THREE.Mesh(L.box(0.35, 3.0, 2.4), L.mat(C.blue));
+    const shieldPlate = new THREE.Mesh(L.roundedBox(0.35, 3.0, 2.4), L.mat(C.blue));
     shieldPlate.position.set(-w / 2 - 0.3, 6.2, 15.6);
     g.add(shieldPlate);
     const shield = new THREE.Mesh(L.cyl(0.95, 0.95, 0.25, 6), L.mat(C.gold, 'metal'));
@@ -527,19 +527,19 @@
     // 옥상: 격자 타워 + 접시안테나 + 긴 안테나
     const tower = new THREE.Group();
     for (const [tx, tz] of [[-1.4, -1.4], [1.4, -1.4], [-1.4, 1.4], [1.4, 1.4]]) {
-      const leg = new THREE.Mesh(L.box(0.34, 9, 0.34), L.mat(C.silver, 'metal'));
+      const leg = new THREE.Mesh(L.roundedBox(0.34, 9, 0.34), L.mat(C.silver, 'metal'));
       leg.position.set(tx, 4.5, tz);
       tower.add(leg);
     }
     for (let i = 1; i <= 2; i++) {
-      const rung = new THREE.Mesh(L.box(3.1, 0.24, 3.1), L.mat(C.silver, 'metal'));
+      const rung = new THREE.Mesh(L.roundedBox(3.1, 0.24, 3.1), L.mat(C.silver, 'metal'));
       rung.position.y = i * 3.4;
       tower.add(rung);
     }
     tower.position.set(3, h + 2.8, -6);
     g.add(tower);
     const dish = new THREE.Mesh(new THREE.SphereGeometry(2.6, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.45),
-      new THREE.MeshPhongMaterial({ color: C.silver, specular: 0xffffff, shininess: 150, side: THREE.DoubleSide }));
+      new THREE.MeshPhysicalMaterial({ color: C.silver, metalness: 0.74, roughness: 0.24, clearcoat: 0.18, envMapIntensity: 1.05, side: THREE.DoubleSide }));
     dish.position.set(3, h + 12.6, -6);
     dish.rotation.set(-0.7, 0, 0.25);
     g.add(dish);
@@ -557,7 +557,7 @@
 
     // 주차장 진입 게이트(사진 왼쪽의 흰 격자 담장)
     for (let i = 0; i < 2; i++) {
-      const panel = new THREE.Mesh(L.box(0.4, 7, 11), L.mat(C.white));
+      const panel = new THREE.Mesh(L.roundedBox(0.4, 7, 11), L.mat(C.white));
       panel.position.set(-w / 2 - 8, 3.5, -d / 2 - 6 - i * 11.4);
       g.add(panel);
     }
@@ -595,7 +595,7 @@
     const t = officeTexture().clone();
     t.needsUpdate = true;
     t.repeat.set(Math.max(1, Math.round(w / 6)), Math.max(1, Math.round(h / 6)));
-    return new THREE.MeshPhongMaterial({ color, map: t, specular: 0x6a6a6a, shininess: 40 });
+    return new THREE.MeshPhysicalMaterial({ color, map: t, metalness: 0, roughness: 0.43, clearcoat: 0.22, clearcoatRoughness: 0.30, envMapIntensity: 0.38 });
   }
 
   /** 멀리 보이는 고층빌딩 스카이라인 */
@@ -771,45 +771,45 @@
     const w = 6.8, len = 13.5;
 
     // 차대 + 차체
-    const chassis = new THREE.Mesh(L.box(w - 0.6, 1.0, len - 1), L.mat(C.darkGray, 'matte'));
+    const chassis = new THREE.Mesh(L.roundedBox(w - 0.6, 1.0, len - 1), L.mat(C.darkGray, 'matte'));
     chassis.position.y = 1.1;
     g.add(chassis);
-    const lower = new THREE.Mesh(L.box(w, 2.0, len), L.mat(C.red));
+    const lower = new THREE.Mesh(L.roundedBox(w, 2.0, len), L.mat(C.red));
     lower.position.y = 2.5;
     lower.castShadow = true;
     g.add(lower);
     // 문 손잡이 라인
     for (const sx of [-1, 1]) {
-      const line = new THREE.Mesh(L.box(0.16, 0.3, 4.2), L.mat(C.darkRed, 'matte'));
+      const line = new THREE.Mesh(L.roundedBox(0.16, 0.3, 4.2), L.mat(C.darkRed, 'matte'));
       line.position.set(sx * (w / 2 + 0.02), 2.9, -0.6);
       g.add(line);
     }
     // 보닛(낮은 앞부분)
-    const hood = new THREE.Mesh(L.box(w - 0.3, 1.2, 4.0), L.mat(C.red));
+    const hood = new THREE.Mesh(L.roundedBox(w - 0.3, 1.2, 4.0), L.mat(C.red));
     hood.position.set(0, 4.0, len / 2 - 2.2);
     hood.castShadow = true;
     g.add(hood);
     // 캐빈
-    const cabin = new THREE.Mesh(L.box(w - 0.5, 3.0, len - 6.2), L.mat(C.red));
+    const cabin = new THREE.Mesh(L.roundedBox(w - 0.5, 3.0, len - 6.2), L.mat(C.red));
     cabin.position.set(0, 5.0, -1.3);
     cabin.castShadow = true;
     g.add(cabin);
     // 앞유리(비스듬히)
-    const wind = new THREE.Mesh(L.box(w - 1.0, 3.3, 0.35), L.mat(0x1f3b4d, 'glass'));
+    const wind = new THREE.Mesh(L.roundedBox(w - 1.0, 3.3, 0.35), L.mat(0x1f3b4d, 'glass'));
     wind.position.set(0, 5.1, len / 2 - 4.1);
     wind.rotation.x = -0.42;
     g.add(wind);
-    const windFrame = new THREE.Mesh(L.box(w - 0.6, 3.5, 0.2), L.mat(C.red));
+    const windFrame = new THREE.Mesh(L.roundedBox(w - 0.6, 3.5, 0.2), L.mat(C.red));
     windFrame.position.set(0, 5.05, len / 2 - 4.35);
     windFrame.rotation.x = -0.42;
     g.add(windFrame);
     // 측면 유리 + 뒷유리
     for (const sx of [-1, 1]) {
-      const side = new THREE.Mesh(L.box(0.3, 1.9, len - 7.0), L.mat(0x1f3b4d, 'glass'));
+      const side = new THREE.Mesh(L.roundedBox(0.3, 1.9, len - 7.0), L.mat(0x1f3b4d, 'glass'));
       side.position.set(sx * (w / 2 - 0.35), 5.5, -1.3);
       g.add(side);
     }
-    const rear = new THREE.Mesh(L.box(w - 1.2, 2.0, 0.3), L.mat(0x1f3b4d, 'glass'));
+    const rear = new THREE.Mesh(L.roundedBox(w - 1.2, 2.0, 0.3), L.mat(0x1f3b4d, 'glass'));
     rear.position.set(0, 5.5, -len / 2 + 2.5);
     g.add(rear);
     // 지붕(스터드 판) + 루프랙
@@ -817,15 +817,15 @@
     roof.position.set(0, 6.7, -1.3);
     g.add(roof);
     for (const sx of [-1, 1]) {
-      const rack = new THREE.Mesh(L.box(0.3, 0.3, 5.4), L.mat(C.black, 'matte'));
+      const rack = new THREE.Mesh(L.roundedBox(0.3, 0.3, 5.4), L.mat(C.black, 'matte'));
       rack.position.set(sx * 2.2, 7.1, -1.3);
       g.add(rack);
     }
     // 앞: 그릴 · 범퍼 · 전조등 · 방향지시등 · 번호판
-    const grille = new THREE.Mesh(L.box(w - 1.2, 1.0, 0.4), L.mat(C.black, 'matte'));
+    const grille = new THREE.Mesh(L.roundedBox(w - 1.2, 1.0, 0.4), L.mat(C.black, 'matte'));
     grille.position.set(0, 3.9, len / 2 + 0.1);
     g.add(grille);
-    const bumper = new THREE.Mesh(L.box(w + 0.1, 1.1, 0.9), L.mat(C.lightGray, 'metal'));
+    const bumper = new THREE.Mesh(L.roundedBox(w + 0.1, 1.1, 0.9), L.mat(C.lightGray, 'metal'));
     bumper.position.set(0, 2.1, len / 2 + 0.25);
     bumper.castShadow = true;
     g.add(bumper);
@@ -834,14 +834,14 @@
       lamp.rotation.x = Math.PI / 2;
       lamp.position.set(sx * 2.3, 3.9, len / 2 + 0.28);
       g.add(lamp);
-      const blink = new THREE.Mesh(L.box(0.7, 0.4, 0.2), L.mat(C.orange, 'glow'));
+      const blink = new THREE.Mesh(L.roundedBox(0.7, 0.4, 0.2), L.mat(C.orange, 'glow'));
       blink.position.set(sx * 2.3, 3.1, len / 2 + 0.3);
       g.add(blink);
-      const tail = new THREE.Mesh(L.box(0.8, 0.7, 0.2), L.mat(0x8c1b0a, 'glow'));
+      const tail = new THREE.Mesh(L.roundedBox(0.8, 0.7, 0.2), L.mat(0x8c1b0a, 'glow'));
       tail.position.set(sx * 2.2, 3.4, -len / 2 - 0.12);
       g.add(tail);
     }
-    const plate = new THREE.Mesh(L.box(2.6, 0.9, 0.16), L.mat(C.white));
+    const plate = new THREE.Mesh(L.roundedBox(2.6, 0.9, 0.16), L.mat(C.white));
     plate.position.set(0, 2.4, len / 2 + 0.75);
     g.add(plate);
 
@@ -856,32 +856,32 @@
     const g = new THREE.Group();
     const w = 6.8, len = 14.0;
 
-    const chassis = new THREE.Mesh(L.box(w - 0.6, 1.0, len - 1), L.mat(C.darkGray, 'matte'));
+    const chassis = new THREE.Mesh(L.roundedBox(w - 0.6, 1.0, len - 1), L.mat(C.darkGray, 'matte'));
     chassis.position.y = 1.05;
     g.add(chassis);
-    const lower = new THREE.Mesh(L.box(w, 1.6, len), L.mat(C.blue));
+    const lower = new THREE.Mesh(L.roundedBox(w, 1.6, len), L.mat(C.blue));
     lower.position.y = 2.3;
     lower.castShadow = true;
     g.add(lower);
-    const upper = new THREE.Mesh(L.box(w, 1.5, len), L.mat(C.white));
+    const upper = new THREE.Mesh(L.roundedBox(w, 1.5, len), L.mat(C.white));
     upper.position.y = 3.7;
     upper.castShadow = true;
     g.add(upper);
     // 보닛(파랑) + 흰 지붕
-    const hood = new THREE.Mesh(L.box(w - 0.3, 1.0, 3.8), L.mat(C.blue));
+    const hood = new THREE.Mesh(L.roundedBox(w - 0.3, 1.0, 3.8), L.mat(C.blue));
     hood.position.set(0, 4.7, len / 2 - 2.2);
     hood.castShadow = true;
     g.add(hood);
-    const cabin = new THREE.Mesh(L.box(w - 0.5, 2.8, len - 6.4), L.mat(C.white));
+    const cabin = new THREE.Mesh(L.roundedBox(w - 0.5, 2.8, len - 6.4), L.mat(C.white));
     cabin.position.set(0, 5.4, -1.4);
     cabin.castShadow = true;
     g.add(cabin);
-    const wind = new THREE.Mesh(L.box(w - 1.0, 3.1, 0.35), L.mat(0x1f3b4d, 'glass'));
+    const wind = new THREE.Mesh(L.roundedBox(w - 1.0, 3.1, 0.35), L.mat(0x1f3b4d, 'glass'));
     wind.position.set(0, 5.4, len / 2 - 4.0);
     wind.rotation.x = -0.44;
     g.add(wind);
     for (const sx of [-1, 1]) {
-      const side = new THREE.Mesh(L.box(0.3, 1.8, len - 7.2), L.mat(0x1f3b4d, 'glass'));
+      const side = new THREE.Mesh(L.roundedBox(0.3, 1.8, len - 7.2), L.mat(0x1f3b4d, 'glass'));
       side.position.set(sx * (w / 2 - 0.35), 5.8, -1.4);
       g.add(side);
       // 측면 POLICE 인쇄 (파란 글자)
@@ -890,7 +890,7 @@
       text.position.set(sx * (w / 2 + 0.1), 3.8, -1.0);
       g.add(text);
     }
-    const rear = new THREE.Mesh(L.box(w - 1.2, 1.9, 0.3), L.mat(0x1f3b4d, 'glass'));
+    const rear = new THREE.Mesh(L.roundedBox(w - 1.2, 1.9, 0.3), L.mat(0x1f3b4d, 'glass'));
     rear.position.set(0, 5.8, -len / 2 + 2.6);
     g.add(rear);
     const roof = L.plate(C.white, 6, 6, { height: 0.6 });
@@ -898,24 +898,24 @@
     g.add(roof);
 
     // 경광등 바(검은 받침 + 파란 투명 램프 2개)
-    const barBase = new THREE.Mesh(L.box(5.0, 0.5, 1.5), L.mat(C.black, 'matte'));
+    const barBase = new THREE.Mesh(L.roundedBox(5.0, 0.5, 1.5), L.mat(C.black, 'matte'));
     barBase.position.set(0, 7.5, 0.2);
     g.add(barBase);
     const lights = [];
     for (const sx of [-1, 1]) {
-      const lamp = new THREE.Mesh(L.box(2.0, 0.9, 1.3), L.mat(0x2f6fe0, 'glow'));
+      const lamp = new THREE.Mesh(L.roundedBox(2.0, 0.9, 1.3), L.mat(0x2f6fe0, 'glow'));
       lamp.position.set(sx * 1.3, 8.15, 0.2);
       g.add(lamp);
       lights.push(lamp);
     }
     // 앞: 푸시바 · 범퍼 · 전조등
-    const push = new THREE.Mesh(L.box(w - 1.4, 1.6, 0.3), L.mat(C.silver, 'metal'));
+    const push = new THREE.Mesh(L.roundedBox(w - 1.4, 1.6, 0.3), L.mat(C.silver, 'metal'));
     push.position.set(0, 3.2, len / 2 + 0.5);
     g.add(push);
-    const grille = new THREE.Mesh(L.box(w - 1.2, 0.9, 0.4), L.mat(C.black, 'matte'));
+    const grille = new THREE.Mesh(L.roundedBox(w - 1.2, 0.9, 0.4), L.mat(C.black, 'matte'));
     grille.position.set(0, 4.4, len / 2 + 0.1);
     g.add(grille);
-    const bumper = new THREE.Mesh(L.box(w + 0.1, 1.0, 0.9), L.mat(C.lightGray, 'metal'));
+    const bumper = new THREE.Mesh(L.roundedBox(w + 0.1, 1.0, 0.9), L.mat(C.lightGray, 'metal'));
     bumper.position.set(0, 2.0, len / 2 + 0.25);
     g.add(bumper);
     for (const sx of [-1, 1]) {
@@ -923,11 +923,11 @@
       lamp.rotation.x = Math.PI / 2;
       lamp.position.set(sx * 2.3, 4.3, len / 2 + 0.28);
       g.add(lamp);
-      const tail = new THREE.Mesh(L.box(0.8, 0.6, 0.2), L.mat(0x8c1b0a, 'glow'));
+      const tail = new THREE.Mesh(L.roundedBox(0.8, 0.6, 0.2), L.mat(0x8c1b0a, 'glow'));
       tail.position.set(sx * 2.2, 3.6, -len / 2 - 0.12);
       g.add(tail);
     }
-    const plate = new THREE.Mesh(L.box(2.6, 0.9, 0.16), L.mat(C.white));
+    const plate = new THREE.Mesh(L.roundedBox(2.6, 0.9, 0.16), L.mat(C.white));
     plate.position.set(0, 2.3, len / 2 + 0.75);
     g.add(plate);
 

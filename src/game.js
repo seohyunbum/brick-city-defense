@@ -16,7 +16,7 @@
     // ---------------- 렌더러
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    L.LookDev.configureRenderer(this.renderer);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.autoClear = false;
@@ -29,21 +29,8 @@
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.4, 900);
     this.camera.rotation.order = 'YXZ';
 
-    const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x54703f, 0.70);
-    this.scene.add(hemi);
-    // 사진의 맑은 햇빛: 약간 따뜻하고, 그림자 경계는 살짝 부드럽게
-    const sun = new THREE.DirectionalLight(0xffeec8, 1.5);
-    sun.position.set(58, 96, 62);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1536, 1536);
-    const sc = sun.shadow.camera;
-    sc.left = -58; sc.right = 58; sc.top = 58; sc.bottom = -58;
-    sc.near = 20; sc.far = 240;
-    sun.shadow.bias = -0.0006;
-    sun.shadow.radius = 4;
-    this.scene.add(sun);
-    this.sun = sun;
-    this.scene.add(new THREE.AmbientLight(0xfff4e6, 0.13));
+    this.lookdev = L.LookDev.install(this.scene, this.renderer);
+    this.sun = this.lookdev.sun;
 
     // ---------------- 매크로 사진 느낌 후처리(심도 흐림·비네팅)
     this.post = new L.PostFX(this.renderer, this.camera);

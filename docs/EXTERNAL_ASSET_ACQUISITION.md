@@ -109,3 +109,9 @@ AI 산출물은 provider/tool, backend model id(노출된 경우), date, full pr
 ## 9. 변경 감시
 
 license page는 변할 수 있으므로 다운로드 시점 snapshot/hash를 보존한다. 후보표의 URL이 살아 있다는 이유만으로 이전 판정을 재사용하지 않는다. 새 버전은 새 asset id와 SHA로 다시 심사한다.
+
+## 10. Graphics milestone decision (2026-08-20)
+
+No external HDRI, texture or model is shipped in the first PBR milestone. A procedural PMREM reflection rig preserves offline file protocol, avoids a new loader and keeps the payload at about 1.36 MB.
+
+Kenney, Quaternius, Poly Haven and ambientCG remain candidate sources only. The exact source/version/hash/license gate still applies before any file enters the runtime. Candidate pages and their selection rationale are maintained in [GRAPHICS_LOOKDEV_PIPELINE.md](./GRAPHICS_LOOKDEV_PIPELINE.md).

@@ -114,3 +114,9 @@ SFX 1순위는 Kenney CC0의 Interface Sounds, Impact Sounds, RPG Audio에서 �
 ## 11. 아트·오디오 완료 게이트
 
 12 golden view 판독성, semantic palette 위반 감소, 공격 timing, BGM 3상태, SFX coverage, 볼륨/음소거, reduced-motion/DoF off, 라이선스 manifest, file:///Pages 재생, 성능 예산이 모두 PASS여야 완료다.
+
+## 9. PBR lookdev SSOT (2026-08-20)
+
+The binding graphics specification is [GRAPHICS_LOOKDEV_PIPELINE.md](./GRAPHICS_LOOKDEV_PIPELINE.md). It fixes ABS/matte/glass/metal parameters, ACES exposure, PMREM reflection lighting, selective rounded edges, lens-readability limits, Unreal Engine handoff rules and golden-view acceptance.
+
+A visual change is not accepted from a beauty screenshot alone. The browser smoke must report ACES and environment active, physical materials and rounded geometry above their floors, luminance/clip/crush inside budget and renderer calls/triangles below budget.

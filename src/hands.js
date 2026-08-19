@@ -109,14 +109,14 @@
     const grip = new THREE.Mesh(L.cyl(0.16, 0.18, 0.85, 10), L.mat(C.reddishBrown, 'matte'));
     grip.position.y = 0.4;
     const pommel = new THREE.Mesh(L.sph(0.22, 10), L.mat(C.gold, 'metal'));
-    const guard = new THREE.Mesh(L.box(1.35, 0.2, 0.34), L.mat(C.gold, 'metal'));
+    const guard = new THREE.Mesh(L.roundedBox(1.35, 0.2, 0.34), L.mat(C.gold, 'metal'));
     guard.position.y = 0.9;
-    const blade = new THREE.Mesh(L.box(0.34, 3.1, 0.13), L.mat(C.silver, 'metal'));
+    const blade = new THREE.Mesh(L.roundedBox(0.34, 3.1, 0.13), L.mat(C.silver, 'metal'));
     blade.position.y = 2.5;
     const tip = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.7, 4), L.mat(C.silver, 'metal'));
     tip.position.y = 4.35;
     tip.rotation.y = Math.PI / 4;
-    const fuller = new THREE.Mesh(L.box(0.1, 2.9, 0.16), L.mat(C.lightGray, 'metal'));
+    const fuller = new THREE.Mesh(L.roundedBox(0.1, 2.9, 0.16), L.mat(C.lightGray, 'metal'));
     fuller.position.y = 2.5;
     g.add(grip, pommel, guard, blade, tip, fuller);
     g.traverse((o) => { o.castShadow = false; });
@@ -126,7 +126,7 @@
 
   function buildBlaster() {
     const g = new THREE.Group();
-    const body = new THREE.Mesh(L.box(0.9, 0.95, 2.6), L.mat(C.blue));
+    const body = new THREE.Mesh(L.roundedBox(0.9, 0.95, 2.6), L.mat(C.blue));
     body.position.set(0, 0.5, -0.7);
     const rail = L.plate(C.lightGray, 1, 3, { height: 0.28 });
     rail.scale.set(0.9, 1, 0.85);
@@ -137,14 +137,14 @@
     const muzzle = new THREE.Mesh(L.cyl(0.42, 0.38, 0.45, 12), L.mat(C.orange));
     muzzle.rotation.x = Math.PI / 2;
     muzzle.position.set(0, 0.55, -3.9);
-    const sight = new THREE.Mesh(L.box(0.3, 0.42, 0.3), L.mat(C.black, 'matte'));
+    const sight = new THREE.Mesh(L.roundedBox(0.3, 0.42, 0.3), L.mat(C.black, 'matte'));
     sight.position.set(0, 1.35, -1.9);
-    const grip = new THREE.Mesh(L.box(0.62, 1.5, 0.75), L.mat(C.yellow));
+    const grip = new THREE.Mesh(L.roundedBox(0.62, 1.5, 0.75), L.mat(C.yellow));
     grip.position.set(0, -0.35, 0.25);
     grip.rotation.x = -0.22;
-    const mag = new THREE.Mesh(L.box(0.7, 1.0, 0.8), L.mat(C.darkGray, 'matte'));
+    const mag = new THREE.Mesh(L.roundedBox(0.7, 1.0, 0.8), L.mat(C.darkGray, 'matte'));
     mag.position.set(0, -0.1, -1.1);
-    const trigger = new THREE.Mesh(L.box(0.16, 0.4, 0.18), L.mat(C.darkGray, 'matte'));
+    const trigger = new THREE.Mesh(L.roundedBox(0.16, 0.4, 0.18), L.mat(C.darkGray, 'matte'));
     trigger.position.set(0, 0.02, -0.42);
     // 총구 섬광(발사 때만 보임)
     const flash = new THREE.Mesh(L.sph(0.62, 10), new THREE.MeshBasicMaterial({
@@ -215,10 +215,10 @@
     g.add(ring2);
     // 드래곤 파이어용 브릭 드래곤 머리(시전 중에만 보임)
     const dragon = new THREE.Group();
-    const head = new THREE.Mesh(L.box(1.5, 1.2, 2.1), L.mat(C.red));
-    const snout = new THREE.Mesh(L.box(1.0, 0.7, 1.1), L.mat(C.red));
+    const head = new THREE.Mesh(L.roundedBox(1.5, 1.2, 2.1), L.mat(C.red));
+    const snout = new THREE.Mesh(L.roundedBox(1.0, 0.7, 1.1), L.mat(C.red));
     snout.position.set(0, -0.2, -1.5);
-    const jaw = new THREE.Mesh(L.box(1.0, 0.35, 1.0), L.mat(0x8c1b0a));
+    const jaw = new THREE.Mesh(L.roundedBox(1.0, 0.35, 1.0), L.mat(0x8c1b0a));
     jaw.position.set(0, -0.62, -1.45);
     for (const side of [-1, 1]) {
       const horn = new THREE.Mesh(new THREE.ConeGeometry(0.22, 1.0, 6), L.mat(C.gold, 'metal'));
@@ -244,9 +244,9 @@
   function buildArm(side, sleeveColor) {
     const g = new THREE.Group();
     // 파란 소매 (사진의 파란 팔)
-    const sleeve = new THREE.Mesh(L.box(1.15, 2.9, 1.2), L.mat(sleeveColor));
+    const sleeve = new THREE.Mesh(L.roundedBox(1.15, 2.9, 1.2), L.mat(sleeveColor));
     sleeve.position.y = 1.1;
-    const cuff = new THREE.Mesh(L.box(1.2, 0.35, 1.25), L.mat(sleeveColor));
+    const cuff = new THREE.Mesh(L.roundedBox(1.2, 0.35, 1.25), L.mat(sleeveColor));
     cuff.position.y = 2.5;
     // 노란 C 자 손
     const hand = L.clawHand(C.yellow);

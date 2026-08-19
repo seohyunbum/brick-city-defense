@@ -125,3 +125,9 @@ Playwright smoke는 CI 호환을 위해 headless software/installed Chrome을 �
 6. 원인·영향·재발 방지·자산 hash 변경 여부를 release 기록에 남김
 
 수동 파일 업로드나 실패 artifact 재배포는 롤백으로 인정하지 않는다.
+
+## 11. Automated graphics contract (2026-08-20)
+
+The Edge/Chromium smoke measures the final composited frame. Required values are defined in [GRAPHICS_LOOKDEV_PIPELINE.md](./GRAPHICS_LOOKDEV_PIPELINE.md): ACES and PMREM enabled; at least 12 unique physical materials and 12 rounded geometries; aperture <= 0.30; 900p maximum blur <= 4.5 px; vignette <= 0.10; mean luminance 0.30–0.86; luminance standard deviation >= 0.12; clipped pixels <= 28%; crushed pixels <= 18%.
+
+These broad catastrophic-regression limits do not replace human golden-view review. Software-renderer FPS remains diagnostic only. Real-hardware p95/p99 frame-time gates remain open until run on the target matrix.

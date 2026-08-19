@@ -30,6 +30,13 @@
           "role": "license evidence",
           "hash_mode": "text-lf",
           "sha256": "852e0e8699169bf9f6fdc6bda3e682d078dcbc738b5d33e74df594721bff271d"
+        },
+        {
+          "path": "src/rounded-box.js",
+          "role": "classic-script adapter derived from the r150 RoundedBoxGeometry addon",
+          "source_url": "https://github.com/mrdoob/three.js/blob/r150/examples/jsm/geometries/RoundedBoxGeometry.js",
+          "hash_mode": "text-lf",
+          "sha256": "27992025411338301cc099ee99436a6f95e4d949d776c52aa2ea6d657d308ab2"
         }
       ]
     },

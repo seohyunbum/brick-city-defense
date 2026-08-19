@@ -16,9 +16,12 @@ const root = resolve(here, '..');
 const outDir = resolve(process.argv[2] || resolve(root, '.smoke'));
 mkdirSync(outDir, { recursive: true });
 
+const hardwareProbe = process.env.SMOKE_RENDERER === 'hardware';
+const browserArgs = ['--allow-file-access-from-files'];
+if (!hardwareProbe) browserArgs.push('--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader');
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
-  args: ['--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader', '--allow-file-access-from-files'],
+  args: browserArgs,
 });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 
@@ -302,11 +305,54 @@ const info = await page.evaluate(() => {
   const worldTriangles = r.info.render.triangles;
   r.clearDepth();
   r.render(g.hands.scene, g.hands.camera);
+  const physical = new Set();
+  const rounded = new Set();
+  const auditObject = (object) => {
+    if (object.geometry?.type === 'RoundedBoxGeometry') rounded.add(object.geometry.uuid);
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) if (material?.isMeshPhysicalMaterial) physical.add(material.uuid);
+  };
+  g.scene.traverse(auditObject);
+  g.hands.scene.traverse(auditObject);
+
+  const sample = document.createElement('canvas');
+  sample.width = 160; sample.height = 90;
+  const context = sample.getContext('2d', { willReadFrequently: true });
+  context.drawImage(r.domElement, 0, 0, sample.width, sample.height);
+  const pixels = context.getImageData(0, 0, sample.width, sample.height).data;
+  let sum = 0, sumSq = 0, clipped = 0, crushed = 0;
+  const count = pixels.length / 4;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const lum = (0.2126 * pixels[i] + 0.7152 * pixels[i + 1] + 0.0722 * pixels[i + 2]) / 255;
+    sum += lum; sumSq += lum * lum;
+    if (lum > 0.985) clipped++;
+    if (lum < 0.025) crushed++;
+  }
+  const mean = sum / count;
   const out = {
     calls: r.info.render.calls,
     triangles: r.info.render.triangles,
     worldCalls,
     worldTriangles,
+    visual: {
+      aces: r.toneMapping === THREE.ACESFilmicToneMapping,
+      exposure: r.toneMappingExposure,
+      environment: !!g.scene.environment,
+      physicalMaterials: physical.size,
+      roundedGeometries: rounded.size,
+      aperture: g.post.material?.uniforms.uAperture.value ?? 0,
+      maxBlur: g.post.material?.uniforms.uMaxBlur.value ?? 0,
+      vignette: g.post.material?.uniforms.uVignette.value ?? 0,
+      meanLuma: Number(mean.toFixed(4)),
+      lumaStdDev: Number(Math.sqrt(Math.max(0, sumSq / count - mean * mean)).toFixed(4)),
+      clippedRatio: Number((clipped / count).toFixed(4)),
+      crushedRatio: Number((crushed / count).toFixed(4)),
+      gpuRenderer: (() => {
+        const gl = r.getContext();
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      })(),
+    },
   };
   r.info.autoReset = true;
   return out;
@@ -347,8 +393,17 @@ await denied.close();
 
 await browser.close();
 
-console.log('FPS(소프트웨어 렌더러 기준):', fps);
+console.log(hardwareProbe ? 'FPS(로컬 하드웨어 프로브):' : 'FPS(소프트웨어 렌더러 기준):', fps);
 console.log('렌더 패스 합계:', JSON.stringify(info));
+console.log('그래픽 품질 계약:', JSON.stringify(info.visual));
+const v = info.visual;
+if (!v.aces || !v.environment || v.physicalMaterials < 12 || v.roundedGeometries < 12 ||
+    v.aperture > 0.30 || v.maxBlur > 4.5 || v.vignette > 0.10 ||
+    v.meanLuma < 0.30 || v.meanLuma > 0.86 || v.lumaStdDev < 0.12 ||
+    v.clippedRatio > 0.28 || v.crushedRatio > 0.18) {
+  console.error('그래픽 품질 계약 실패:', JSON.stringify(v));
+  process.exit(1);
+}
 if (info.calls > MAX_DRAWCALLS) {
   console.error(`드로우콜이 예산(${MAX_DRAWCALLS})을 넘었다: ${info.calls}`);
   process.exit(1);

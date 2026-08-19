@@ -1,8 +1,8 @@
 /* =========================================================================
  * postfx.js — 매크로 사진 느낌을 내는 후처리 (three 코어만 사용, 외부 모듈 없음)
  *
- * 실물 레고 사진의 핵심은 "접사 렌즈의 얕은 심도"다.
- *   · 초점 거리 주변은 또렷, 멀어질수록 뭉개짐(보케)
+ * 실물 브릭 사진의 렌즈 특성은 유지하되 게임 판독성을 먼저 지킨다.
+ *   · 초점 거리 주변은 또렷하고, 원거리만 약하게 분리한다
  *   · 화면 가장자리 살짝 어두워짐(비네팅)
  *   · 필름 같은 약한 채도·대비 보정
  *
@@ -129,10 +129,10 @@
         uNear: { value: camera.near },
         uFar: { value: camera.far },
         uFocus: { value: 34 },
-        uAperture: { value: 0.62 },
-        uMaxBlur: { value: 7.5 },
-        uVignette: { value: 0.18 },
-        uSaturation: { value: 1.12 },
+        uAperture: { value: 0.24 },
+        uMaxBlur: { value: 3.2 },
+        uVignette: { value: 0.07 },
+        uSaturation: { value: 1.04 },
       },
     });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
@@ -151,7 +151,7 @@
     this.target.setSize(pw, ph);
     this.material.uniforms.uTexel.value.set(1 / pw, 1 / ph);
     // 해상도가 커지면 픽셀 단위 흐림 반경도 같이 커져야 보이는 결과가 같다
-    this.material.uniforms.uMaxBlur.value = 7.5 * (ph / 900);
+    this.material.uniforms.uMaxBlur.value = 3.2 * (ph / 900);
     this.material.uniforms.uNear.value = this.camera.near;
     this.material.uniforms.uFar.value = this.camera.far;
   };

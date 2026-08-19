@@ -2,7 +2,7 @@
  * bricks.js — 레고 브릭 부품 공장
  * 사진(레고 시티 실물 디오라마)의 느낌을 그대로 내기 위한 규칙:
  *   - 1 unit = 스터드 1칸(8mm), 브릭 높이 1.2, 플레이트 높이 0.4
- *   - 플라스틱 광택 = MeshPhongMaterial(specular + shininess)
+ *   - 플라스틱 광택 = PBR ABS(clearcoat + roughness + PMREM environment)
  *   - 스터드(돌기)는 넓은 판은 텍스처(map+bumpMap), 가까운 부품은 실제 실린더
  * 모든 함수는 순수 팩토리(부수효과 금지). 색은 COLORS 팔레트만 사용.
  * ========================================================================= */
@@ -45,6 +45,15 @@ window.LEGO = window.LEGO || {};
     glass: 0x9fd2e6,
     flesh: 0xf6d7b3,
     fire: 0xff7a18,
+    lookSky: 0x8fc9ef,
+    lookSkySoft: 0xb9d9ed,
+    lookWarm: 0xfff2d6,
+    lookCool: 0xc9e9ff,
+    lookGround: 0x5d6a60,
+    lookHemiGround: 0x526442,
+    lookSun: 0xffedcb,
+    lookFill: 0xbcdcff,
+    lookAmbient: 0xfff4e6,
   };
 
   // ---------------------------------------------------------------- 텍스처
@@ -138,18 +147,28 @@ window.LEGO = window.LEGO || {};
     if (matCache.has(key)) return matCache.get(key);
     let m;
     if (finish === 'glass') {
-      m = new THREE.MeshPhongMaterial({
-        color, specular: 0xffffff, shininess: 140, transparent: true,
-        opacity: 0.42, side: THREE.DoubleSide,
+      m = new THREE.MeshPhysicalMaterial({
+        color, metalness: 0, roughness: 0.08, clearcoat: 1,
+        clearcoatRoughness: 0.04, envMapIntensity: 0.9,
+        transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide,
       });
     } else if (finish === 'glow') {
       m = new THREE.MeshBasicMaterial({ color });
     } else if (finish === 'metal') {
-      m = new THREE.MeshPhongMaterial({ color, specular: 0xdddddd, shininess: 200, reflectivity: 1 });
+      m = new THREE.MeshPhysicalMaterial({
+        color, metalness: 0.72, roughness: 0.22, clearcoat: 0.22,
+        clearcoatRoughness: 0.16, envMapIntensity: 1.05,
+      });
     } else if (finish === 'matte') {
-      m = new THREE.MeshPhongMaterial({ color, specular: 0x1a1a1a, shininess: 8 });
+      m = new THREE.MeshPhysicalMaterial({
+        color, metalness: 0, roughness: 0.74, clearcoat: 0.06,
+        clearcoatRoughness: 0.58, envMapIntensity: 0.34,
+      });
     } else {
-      m = new THREE.MeshPhongMaterial({ color, specular: 0xa6a6a6, shininess: 84 });
+      m = new THREE.MeshPhysicalMaterial({
+        color, metalness: 0, roughness: 0.24, clearcoat: 0.72,
+        clearcoatRoughness: 0.15, envMapIntensity: 0.62,
+      });
     }
     matCache.set(key, m);
     return m;
@@ -161,9 +180,12 @@ window.LEGO = window.LEGO || {};
     repeatY = Math.max(1, Math.round(repeatY));
     const side = mat(color, finish);
     const { map, bump } = surfaceTextures(kind, repeatX, repeatY);
-    const top = new THREE.MeshPhongMaterial({
+    const top = new THREE.MeshPhysicalMaterial({
       color, map, bumpMap: bump, bumpScale: kind === 'tile' ? 0.12 : 0.18,
-      specular: 0x8f8f8f, shininess: finish === 'matte' ? 10 : 60,
+      metalness: 0, roughness: finish === 'matte' ? 0.72 : 0.30,
+      clearcoat: finish === 'matte' ? 0.05 : 0.58,
+      clearcoatRoughness: finish === 'matte' ? 0.60 : 0.18,
+      envMapIntensity: finish === 'matte' ? 0.30 : 0.56,
     });
     // BoxGeometry 면 순서: +X, -X, +Y, -Y, +Z, -Z
     return [side, side, top, side, side, side];
@@ -175,8 +197,9 @@ window.LEGO = window.LEGO || {};
     const key = color + '|' + repeat;
     if (studAllCache.has(key)) return studAllCache.get(key);
     const { map, bump } = surfaceTextures('stud', repeat, repeat);
-    const m = new THREE.MeshPhongMaterial({
-      color, map, bumpMap: bump, bumpScale: 0.16, specular: 0x8a8a8a, shininess: 40,
+    const m = new THREE.MeshPhysicalMaterial({
+      color, map, bumpMap: bump, bumpScale: 0.16, metalness: 0, roughness: 0.34,
+      clearcoat: 0.48, clearcoatRoughness: 0.21, envMapIntensity: 0.50,
     });
     studAllCache.set(key, m);
     return m;
@@ -188,6 +211,17 @@ window.LEGO = window.LEGO || {};
     const key = w.toFixed(3) + 'x' + h.toFixed(3) + 'x' + d.toFixed(3);
     if (!boxCache.has(key)) boxCache.set(key, new THREE.BoxGeometry(w, h, d));
     return boxCache.get(key);
+  }
+
+  const roundedBoxCache = new Map();
+  function roundedBox(w, h, d, radius, segments) {
+    radius = radius === undefined ? Math.min(0.09, w * 0.12, h * 0.12, d * 0.12) : radius;
+    segments = segments === undefined ? 1 : segments;
+    const key = [w.toFixed(3), h.toFixed(3), d.toFixed(3), radius.toFixed(3), segments].join('|');
+    if (!roundedBoxCache.has(key)) {
+      roundedBoxCache.set(key, new L.RoundedBoxGeometry(w, h, d, segments, radius));
+    }
+    return roundedBoxCache.get(key);
   }
 
   const cylCache = new Map();
@@ -215,7 +249,7 @@ window.LEGO = window.LEGO || {};
     opts = opts || {};
     const h = BRICK * (hUnits === undefined ? 1 : hUnits);
     const g = new THREE.Group();
-    const body = new THREE.Mesh(box(w * STUD, h, d * STUD), mat(color, opts.finish));
+    const body = new THREE.Mesh(roundedBox(w * STUD, h, d * STUD), mat(color, opts.finish));
     body.castShadow = opts.shadow !== false;
     body.receiveShadow = opts.shadow !== false;
     g.add(body);
@@ -367,6 +401,7 @@ window.LEGO = window.LEGO || {};
   L.COLORS = COLORS;
   L.mat = mat;
   L.box = box;
+  L.roundedBox = roundedBox;
   L.cyl = cyl;
   L.sph = sph;
   L.brick = brick;
