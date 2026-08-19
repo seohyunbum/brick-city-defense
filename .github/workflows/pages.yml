@@ -47,6 +47,7 @@ jobs:
           path: .smoke/
           retention-days: 7
           if-no-files-found: warn
+          include-hidden-files: true
 
   deploy:
     needs: quality

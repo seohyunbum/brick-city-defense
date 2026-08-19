@@ -234,6 +234,8 @@ const info = await page.evaluate(() => {
   r.info.autoReset = true;
   return out;
 });
+// CI software renderer에서 두 WebGL 게임을 동시에 돌리지 않는다.
+await page.close();
 
 // 저장소 접근이 차단돼도 부팅·플레이·점수 저장 흐름이 살아 있어야 한다.
 const deniedErrors = [];
@@ -246,7 +248,7 @@ await denied.addInitScript(() => {
   Storage.prototype.setItem = deny;
 });
 await denied.goto('file://' + resolve(root, 'index.html'));
-await denied.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 20000 });
+await denied.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 60000 });
 const storageFlow = await denied.evaluate(() => {
   const g = window.LEGO_GAME;
   g.start();
