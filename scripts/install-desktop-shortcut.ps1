@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$GameUrl = "https://seohyunbum.github.io/brick-city-defense/",
     [string]$ShortcutName = "브릭 시티 - 브릭 몬스터 방어전"

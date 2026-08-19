@@ -65,6 +65,11 @@ if (/\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/u.test(runtimeC
 const packageJson = JSON.parse(read('package.json'));
 if (packageJson.devDependencies?.playwright !== '1.62.1') fail('Playwright 버전이 정확히 고정되지 않음');
 if (!existsSync(join(root, 'package-lock.json'))) fail('package-lock.json 없음');
+const shortcutBytes = readFileSync(join(root, 'scripts/install-desktop-shortcut.ps1'));
+if (shortcutBytes[0] !== 0xef || shortcutBytes[1] !== 0xbb || shortcutBytes[2] !== 0xbf) {
+  fail('Windows PowerShell 5.1용 shortcut script에 UTF-8 BOM 없음');
+}
+
 
 const workflow = read('.github/workflows/pages.yml');
 for (const line of workflow.split(/\r?\n/u).filter((value) => value.includes('uses:'))) {
