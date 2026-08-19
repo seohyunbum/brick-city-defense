@@ -210,6 +210,7 @@
     this.spawnGap = 1.1;
     this.waveActive = false;
     this.boss = null;
+    this._spawnSerial = 0;
     this._v = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
 
@@ -230,7 +231,7 @@
           alive: false, type: id, def: t, group: built.group, parts: built.parts, bar,
           hp: t.hp, maxHp: t.hp, pos: new THREE.Vector3(), speed: t.speed, radius: t.radius,
           color: t.color, phase: Math.random() * 6.28, attackTimer: 0, hurt: 0, stagger: 0,
-          y0: 0, scaleBase: 1,
+          y0: 0, scaleBase: 1, spawnOrder: 0, targetKind: 'player',
         });
       }
     }
@@ -249,6 +250,7 @@
   /** 웨이브 구성 — 갈수록 많아지고 5웨이브마다 보스 */
   Enemies.prototype.startWave = function (n) {
     this.wave = n;
+    this._spawnSerial = 0;
     this.queue.length = 0;
     const slimes = Math.min(20, 4 + n * 2);
     const bats = n >= 2 ? Math.min(10, Math.floor(n * 0.9)) : 0;
@@ -287,6 +289,7 @@
     e.attackTimer = 0.6;
     e.hurt = 0;
     e.stagger = 0;
+    e.spawnOrder = this._spawnSerial++;
     e.phase = Math.random() * 6.28;
     // 도로 저편에서 등장
     const lane = (Math.random() - 0.5) * 22;
@@ -381,7 +384,7 @@
     if (this.hooks.onKill) this.hooks.onKill(e);
   };
 
-  Enemies.prototype.update = function (dt, playerPos, camera) {
+  Enemies.prototype.update = function (dt, playerPos, camera, objectives) {
     // ---- 등장 대기열
     if (this.waveActive && this.queue.length) {
       this.spawnTimer -= dt;
@@ -403,8 +406,11 @@
       if (e.hurt > 0) e.hurt -= dt;
       if (e.stagger > 0) e.stagger -= dt;
 
-      // ---- 플레이어를 향해 이동
-      v.set(playerPos.x - e.pos.x, 0, playerPos.z - e.pos.z);
+      // ---- 역할별 목표를 향해 이동
+      const target = objectives ? objectives.targetFor(e, playerPos) : null;
+      const targetPos = target && target.pos ? target.pos : playerPos;
+      e.targetKind = target ? target.kind : 'player';
+      v.set(targetPos.x - e.pos.x, 0, targetPos.z - e.pos.z);
       const dist = v.length();
       v.divideScalar(dist || 1);
       const inRange = dist < t.attackRange + 1;
@@ -451,8 +457,7 @@
       }
 
       e.group.position.copy(e.pos);
-      // 플레이어를 바라본다
-      e.group.rotation.y = Math.atan2(playerPos.x - e.pos.x, playerPos.z - e.pos.z);
+      e.group.rotation.y = Math.atan2(targetPos.x - e.pos.x, targetPos.z - e.pos.z);
       // 맞으면 잠깐 커진다(레고 티 나는 반응)
       const hurtScale = e.hurt > 0 ? 1 + e.hurt * 1.2 : 1;
       if (e.type !== 'slime') e.group.scale.setScalar(hurtScale);
@@ -469,6 +474,8 @@
           this.fx.shoot('enemyfire', this._v2, v, {
             speed: 52, dmg: t.damage, owner: 'enemy', life: 4,
           });
+        } else if (target && target.kind !== 'player' && objectives) {
+          objectives.damageTarget(target, t.damage);
         } else if (this.hooks.hitPlayer) {
           this.hooks.hitPlayer(t.damage, e.pos);
         }
@@ -496,6 +503,7 @@
     this.queue.length = 0;
     this.waveActive = false;
     this.boss = null;
+    this._spawnSerial = 0;
   };
 
   L.ENEMY_TYPES = TYPES;

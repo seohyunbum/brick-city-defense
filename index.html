@@ -47,6 +47,16 @@
       </div>
     </div>
 
+    <div id="objective-bar" aria-label="도시 방어 상태">
+      <div class="objective-panel" id="city-panel">
+        <div class="objective-head"><span>🏙️ 도시 무결도</span><b id="city-value">100</b></div>
+        <div class="objective-track"><div id="city-fill"></div></div>
+      </div>
+      <div class="objective-panel citizen-panel">
+        <span>🧍 시민 대피</span><b id="citizen-value">0 / 13</b>
+      </div>
+    </div>
+
     <div id="boss-bar" class="hidden">
       <div class="boss-name">🐲 브릭 드래곤</div>
       <div class="boss-track"><div class="boss-fill" id="boss-fill"></div></div>
@@ -114,7 +124,7 @@
 
       <button id="start-btn">게임 시작</button>
       <p class="tip">스터드(노란 알맹이)를 주우면 마나가, 파란 알맹이는 총알과 폭탄이 채워진다.<br />
-        시민 미니피그는 공격 대상이 아니다 — 몬스터만 잡는다.</p>
+        골렘은 경찰 거점을, 배트는 시민을 노린다. 시민은 공격 대상이 아니며 도시 무결도 0이면 패배한다.</p>
       <p class="legal-note">LEGO®는 LEGO Group of companies의 상표이며, LEGO Group은 이 독립 사이트를
         후원·승인·보증하지 않습니다.</p>
     </div>
@@ -128,9 +138,31 @@
         <div><span>도달 웨이브</span><b id="over-wave">1</b></div>
         <div><span>점수</span><b id="over-score">0</b></div>
         <div><span>잡은 몬스터</span><b id="over-kills">0</b></div>
+        <div><span>남은 도시 무결도</span><b id="over-city">0</b></div>
+        <div><span>지킨 시민</span><b id="over-saved">0</b></div>
+        <div><span>대피 실패</span><b id="over-lost">0</b></div>
         <div><span>최고 점수</span><b id="over-best">0</b></div>
       </div>
       <button id="again-btn">다시 하기</button>
+    </div>
+  </div>
+
+  <!-- ================= 웨이브 사이 지원 선택 ================= -->
+  <div id="support-screen" class="screen hidden">
+    <div class="sheet">
+      <h2>웨이브 방어 성공!</h2>
+      <p class="sub">다음 공격 전에 지원 하나를 선택하세요. 선택은 이번 게임 동안 되돌릴 수 없습니다.</p>
+      <div class="support-grid">
+        <button class="support-card" data-support="ammo">
+          <span class="support-icon">📦</span><b>탄약 보급</b><small>총알과 폭탄을 최대로 보급</small>
+        </button>
+        <button class="support-card" data-support="repair">
+          <span class="support-icon">🔧</span><b>도시 수리</b><small>도시 무결도 +18</small>
+        </button>
+        <button class="support-card" data-support="mana">
+          <span class="support-icon">✨</span><b>마나 강화</b><small>마나 완충·재생 속도 증가</small>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -167,6 +199,8 @@
 <script src="./src/postfx.js"></script>
 <script src="./src/fx.js"></script>
 <script src="./src/enemies.js"></script>
+<script src="./src/objectives.js"></script>
+<script src="./src/progression.js"></script>
 <script src="./src/audio.js"></script>
 <script src="./src/hud.js"></script>
 <script src="./src/input.js"></script>

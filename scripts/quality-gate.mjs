@@ -52,6 +52,13 @@ for (const path of ['README.md', 'index.html', 'manifest.webmanifest', 'scripts/
 }
 
 const index = read('index.html');
+const objectiveScript = index.indexOf('./src/objectives.js');
+const progressionScript = index.indexOf('./src/progression.js');
+const gameScript = index.indexOf('./src/game.js');
+if (objectiveScript < 0 || progressionScript < 0 || gameScript < 0 ||
+    objectiveScript > progressionScript || progressionScript > gameScript) {
+  fail('Objective/Progression/Game 모듈 로드 순서 불일치');
+}
 if (!index.includes('https://seohyunbum.github.io/brick-city-defense/')) fail('canonical Pages URL 불일치');
 if (/<script[^>]+src=["']https?:/iu.test(index) || /@import\s+url\(["']?https?:/iu.test(read('src/style.css'))) {
   fail('CDN 또는 원격 런타임 의존성 발견');
@@ -60,6 +67,9 @@ if (/<script[^>]+src=["']https?:/iu.test(index) || /@import\s+url\(["']?https?:/
 const runtimeCode = [...walk('src'), 'index.html'].map(read).join('\n');
 if (/\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/u.test(runtimeCode)) {
   fail('own-origin 외 통신 가능 API가 런타임 코드에 추가됨');
+}
+if (read('src/fx.js').includes('if (!s) return;')) {
+  fail('수집품 풀이 가득 찰 때 보상을 조용히 유실하는 코드 발견');
 }
 
 const packageJson = JSON.parse(read('package.json'));
@@ -127,7 +137,7 @@ for (const path of walk('src').filter((value) => value.endsWith('.js') && value 
 }
 if (rawColorCount > 93) fail(`팔레트 밖 직접 색상 증가: ${rawColorCount} > 93`);
 
-const lineLimit = { 'src/city.js': 1087, 'src/game.js': 650 };
+const lineLimit = { 'src/city.js': 1087, 'src/game.js': 631, 'src/objectives.js': 220, 'src/progression.js': 39 };
 for (const [path, limit] of Object.entries(lineLimit)) {
   const lines = read(path).split(/\r?\n/u).length - 1;
   if (lines > limit) fail(`과대 모듈 증가: ${path} ${lines}줄 > ${limit}`);

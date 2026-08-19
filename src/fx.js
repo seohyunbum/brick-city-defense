@@ -15,7 +15,9 @@
       damageArea: null,     // (pos, radius, dmg) => void
       hitPlayer: null,      // (dmg, pos) => void
       onImpact: null,       // (pos, kind) => void
+      collectReward: null,  // pickup pool이 가득 차면 보상을 즉시 지급
     };
+    this.stats = { studOverflowGrants: 0, studLost: 0 };
     this._v = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
     this.time = 0;
@@ -284,7 +286,15 @@
   /** 몬스터가 떨어뜨리는 스터드(마나/탄약 보충) */
   FX.prototype.dropStud = function (pos, kind) {
     const s = this._freeSlot(this.studs);
-    if (!s) return;
+    if (!s) {
+      if (this.hooks.collectReward) {
+        this.stats.studOverflowGrants++;
+        this.hooks.collectReward(kind || 'mana');
+      } else {
+        this.stats.studLost++;
+      }
+      return false;
+    }
     s.alive = true;
     s.t = 0;
     s.grounded = false;
@@ -296,6 +306,7 @@
     s.group.visible = true;
     const a = Math.random() * Math.PI * 2;
     s.vel.set(Math.cos(a) * 6, 16 + Math.random() * 8, Math.sin(a) * 6);
+    return true;
   };
 
   // ------------------------------------------------------------------ update
@@ -475,6 +486,8 @@
         (arr[j].group || arr[j].mesh).visible = false;
       }
     }
+    this.stats.studOverflowGrants = 0;
+    this.stats.studLost = 0;
   };
 
   L.FX = FX;

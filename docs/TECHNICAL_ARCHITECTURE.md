@@ -21,9 +21,11 @@
 | `bricks.js` | 팔레트·재질·브릭 factory | 유지, semantic color 확장 필요 |
 | `loadout.js` | 무기·스킬·플레이어 수치 | SSOT로 적절 |
 | `city.js` | 전체 도시·랜드마크·시민 배치 | 1,087줄 과대 모듈, 확장 차단 |
-| `game.js` | 부팅·상태·전투·이동·보상·시민 | 600줄대 책임 집중, 규칙 위반 |
-| `fx.js` | 발사체·파편·스터드 pool | 상한은 장점, 드롭 pool 소진 정책 필요 |
-| `enemies.js` | 적 factory·AI·웨이브 | 조우 데이터와 실행 분리 필요 |
+| `objectives.js` | 도시 무결도·시민 이동/대피·방어 타깃 | 220줄 동결, P0 규칙 정본 |
+| `progression.js` | 웨이브 사이 지원 선택 | 39줄 동결, 도구 강화 확장 전 별도 설계 필요 |
+| `game.js` | 부팅·상태·전투·이동·system 배선 | 시민/진행 추출 후 631줄 동결, Combat/Player 추가 분리 필요 |
+| `fx.js` | 발사체·파편·스터드 pool | 초과 보상 즉시 지급·overflow/lost 계측 반영 |
+| `enemies.js` | 적 factory·역할별 타깃·AI·웨이브 | 조우 데이터와 실행 분리 필요 |
 | `audio.js` | 합성 SFX | noise cache/voice cap 반영, BGM bus 없음 |
 | `storage.js` | 점수 저장과 차단 fallback | 신규 경계 adapter |
 
@@ -34,11 +36,11 @@
 `bootstrap → state machine → systems → data/factories → Three/WebAudio adapter` 한 방향만 허용한다.
 
 - `bootstrap.js`: DOM 준비, renderer 생성, fatal error 처리
-- `game.js`: start/playing/pause/over 상태 전이와 고정 tick 배선
+- `game.js`: start/playing/support/pause/over 상태 전이와 고정 tick 배선
 - `player-controller.js`: 이동·카메라·피격
 - `combat-system.js`: 무기/스킬 사용과 damage contract
-- `progression-system.js`: 웨이브 보상·강화·점수
-- `objective-system.js`: 시민·거점·도시 무결도
+- `progression.js`: 현재 지원 선택 정본. 향후 도구 역할 확장·점수 결산을 흡수
+- `objectives.js`: 현재 시민·도시 무결도·거점·수리·실패 정본
 - `encounter-director.js`: seed, spawn zone, wave grammar
 - `district-*.js`: 도시 구역 factory
 - `asset-runtime.js`: 등록된 자산만 로드하고 실패 시 대체물 사용

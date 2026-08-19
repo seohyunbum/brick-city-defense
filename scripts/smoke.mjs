@@ -136,33 +136,79 @@ if (play.weapon !== 'sword') throw new Error('1번 키로 검을 들지 못했�
 if (play.skill !== 'fireball') throw new Error('6번 키로 파이어볼을 들지 못했다: ' + play.skill);
 console.log('플레이 확인:', JSON.stringify(play));
 
-// 웨이브 클리어 → 다음 웨이브로 넘어가는지 (프레임 속도에 흔들리지 않게 상태를 기다린다)
-const waveFlow = await page.evaluate(async () => {
+// 웨이브 클리어 → 지원 선택 → 다음 웨이브
+const supportFlow = await page.evaluate(async () => {
   const g = window.LEGO_GAME;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const before = g.wave;
+  g.objectives.damageCity(20, 'smoke');
   g.enemies.queue.length = 0;
   g.enemies.clear();
   g.enemies.waveActive = true;
-  let t0 = Date.now();
-  while (g.wave === before && Date.now() - t0 < 6000) await wait(100);
-  const advanced = g.wave;
-  g.waveBreak = 0.05;
-  t0 = Date.now();
-  while (!g.enemies.waveActive && Date.now() - t0 < 6000) await wait(100);
-  return { before, advanced, active: g.enemies.waveActive, queued: g.enemies.queue.length };
+  const t0 = Date.now();
+  while (g.state !== 'support' && Date.now() - t0 < 6000) await wait(100);
+  return { before, advanced: g.wave, support: g.state, beforeRepair: g.objectives.integrity };
 });
-if (waveFlow.advanced !== waveFlow.before + 1) {
-  throw new Error('웨이브가 넘어가지 않았다: ' + JSON.stringify(waveFlow));
+if (supportFlow.advanced !== supportFlow.before + 1 || supportFlow.support !== 'support') {
+  throw new Error('웨이브/지원 선택 화면 전환 실패: ' + JSON.stringify(supportFlow));
 }
-if (!waveFlow.active) {
-  throw new Error('다음 웨이브가 시작되지 않았다: ' + JSON.stringify(waveFlow));
+await page.screenshot({ path: resolve(outDir, '08-support-choice.png') });
+await page.click('[data-support="repair"]');
+const waveFlow = await page.evaluate(async () => {
+  const g = window.LEGO_GAME;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const chosen = g.progression.choiceCount === 1;
+  const afterRepair = g.objectives.integrity;
+  g.waveBreak = 0.05;
+  const t0 = Date.now();
+  while (!g.enemies.waveActive && Date.now() - t0 < 6000) await wait(100);
+  return { chosen, afterRepair, active: g.enemies.waveActive, queued: g.enemies.queue.length };
+});
+if (!waveFlow.chosen || waveFlow.afterRepair <= supportFlow.beforeRepair || !waveFlow.active) {
+  throw new Error('도시 수리/다음 웨이브 흐름 실패: ' + JSON.stringify({ supportFlow, waveFlow }));
 }
-console.log('웨이브 진행 확인:', JSON.stringify(waveFlow));
+console.log('웨이브 진행 확인:', JSON.stringify({ supportFlow, waveFlow }));
+
+// 골렘=거점, 배트=시민, 도시 무결도 0=패배가 실제 규칙인지 확인
+const defense = await page.evaluate(() => {
+  const g = window.LEGO_GAME;
+  g.start();
+  g.enemies.clear();
+  const initial = g.objectives.integrity;
+  const golem = g.enemies.spawn('golem');
+  const outpost = g.objectives.targetFor(golem, g.player.pos);
+  golem.pos.copy(outpost.pos);
+  golem.group.position.copy(golem.pos);
+  golem.attackTimer = 0;
+  g.enemies.update(0.016, g.player.pos, g.camera, g.objectives);
+  const afterOutpost = g.objectives.integrity;
+
+  const bat = g.enemies.spawn('bat');
+  const citizen = g.objectives.targetFor(bat, g.player.pos);
+  bat.pos.copy(citizen.pos);
+  bat.group.position.copy(bat.pos);
+  bat.attackTimer = 0;
+  g.enemies.update(0.016, g.player.pos, g.camera, g.objectives);
+  bat.attackTimer = 0;
+  g.enemies.update(0.016, g.player.pos, g.camera, g.objectives);
+  const afterCitizen = g.objectives.integrity;
+  const lost = g.objectives.lost;
+  const targets = { golem: golem.targetKind, bat: bat.targetKind };
+  g.objectives.damageCity(999, 'smoke');
+  return { initial, afterOutpost, afterCitizen, lost, targets,
+    state: g.state, reason: g.failureReason };
+});
+if (defense.targets.golem !== 'outpost' || defense.targets.bat !== 'citizen' ||
+    defense.afterOutpost >= defense.initial || defense.afterCitizen >= defense.afterOutpost ||
+    defense.lost !== 1 || defense.state !== 'over' || defense.reason !== 'city') {
+  throw new Error('도시·시민 방어 목표 실패: ' + JSON.stringify(defense));
+}
+console.log('도시·시민 방어 확인:', JSON.stringify(defense));
 
 // 게임 오버 → 다시 시작
 const over = await page.evaluate(() => {
   const g = window.LEGO_GAME;
+  g.start();
   g.hurtPlayer(99);
   const s1 = g.state;
   g.start();
@@ -172,6 +218,37 @@ if (over.over !== 'over' || over.restarted !== 'playing' || over.hearts !== 5 ||
   throw new Error('게임오버/재시작 흐름이 깨졌다: ' + JSON.stringify(over));
 }
 console.log('게임오버·재시작 확인:', JSON.stringify(over));
+
+// 수집품 풀이 가득 차도 게임 보상이 사라지지 않고 즉시 지급돼야 한다.
+const pickupOverflow = await page.evaluate(() => {
+  const g = window.LEGO_GAME;
+  g.fx.clear();
+  const spawned = g.fx.dropStud(g.player.pos, 'mana');
+  const launched = g.fx.studs.find((stud) => stud.alive);
+  const launchSpeed = launched ? launched.vel.length() : 0;
+  g.fx.clear();
+  for (const stud of g.fx.studs) stud.alive = true;
+  g.player.mana = 0;
+  const scoreBefore = g.player.score;
+  const overflowPhysical = g.fx.dropStud(g.player.pos, 'mana');
+  const result = {
+    spawned,
+    launchSpeed,
+    overflowPhysical,
+    overflow: g.fx.stats.studOverflowGrants,
+    lost: g.fx.stats.studLost,
+    mana: g.player.mana,
+    scoreGain: g.player.score - scoreBefore,
+  };
+  g.fx.clear();
+  return result;
+});
+if (pickupOverflow.spawned !== true || pickupOverflow.launchSpeed <= 0 || pickupOverflow.overflowPhysical !== false ||
+    pickupOverflow.overflow !== 1 || pickupOverflow.lost !== 0 ||
+    pickupOverflow.mana <= 0 || pickupOverflow.scoreGain !== 5) {
+  throw new Error('수집품 풀 초과 보상 보존 실패: ' + JSON.stringify(pickupOverflow));
+}
+console.log('수집품 풀 초과 확인:', JSON.stringify(pickupOverflow));
 // 오디오 할당 폭주 방지: 잡음 buffer는 하나, 활성 voice는 cap 이하여야 한다.
 const audioGuard = await page.evaluate(() => {
   const sfx = window.LEGO_GAME.sfx;

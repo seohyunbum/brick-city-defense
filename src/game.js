@@ -54,6 +54,7 @@
     // ---------------- 이펙트 · 몬스터 · 손 · HUD · 입력 · 소리
     this.fx = new L.FX(this.scene);
     this.enemies = new L.Enemies(this.scene, this.fx, this.city);
+    this.objectives = new L.Objectives(this.city);
     this.hands = new L.Hands(this.camera);
     this.hud = new L.HUD();
     this.input = new L.Input(canvas);
@@ -67,10 +68,12 @@
       ammo: { blaster: 24, bomb: 4 },
       score: 0, kills: 0, combo: 0, comboTimer: 0,
       invuln: 0, weaponCd: 0, channelTimer: 0, channelSkill: null,
+      manaRegenBonus: 0,
       bob: 0,
     };
+    this.progression = new L.Progression(this.player, this.objectives);
     this.skillCd = { dragonfire: 0, meteor: 0, fireball: 0 };
-    this.state = 'start';        // start | playing | pause | over
+    this.state = 'start';        // start | playing | support | pause | over
     this.wave = 1;
     this.waveBreak = 0;
     this.best = L.Storage.getNumber('brickcity-best', 'legocity-best');
@@ -82,7 +85,12 @@
     this._tmp2 = new THREE.Vector3();
     this._look = { yaw: 0, pitch: 0 };
     this._aim = new THREE.Vector3();
-
+    this._fxContext = {
+      enemies: this.enemies,
+      objectives: this.objectives,
+      playerPos: this.player.pos,
+      collectStud: (kind) => this.collectStud(kind),
+    };
     this._wire();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -126,14 +134,21 @@
     };
     this.fx.hooks.hitPlayer = (dmg) => self.hurtPlayer(dmg);
     this.fx.hooks.onImpact = () => self.sfx.boom();
+    this.fx.hooks.collectReward = (kind) => self.collectStud(kind);
 
     this.enemies.hooks.hitPlayer = (dmg) => self.hurtPlayer(dmg);
     this.enemies.hooks.onKill = (e) => self.onKill(e);
     this.enemies.hooks.onWaveClear = (n) => self.onWaveClear(n);
-
+    this.objectives.hooks.onDamage = () => self.hud.cityHurt();
+    this.objectives.hooks.onCitizenSafe = () => { self.player.score += 50; self.hud.toast('시민 대피 성공! +50', 0.8); };
+    this.objectives.hooks.onCitizenLost = () => self.hud.toast('시민 대피 실패! 도시 무결도 감소', 1.2);
+    this.objectives.hooks.onFailure = () => self.gameOver(false, 'city');
     document.getElementById('start-btn').addEventListener('click', () => self.start());
     document.getElementById('again-btn').addEventListener('click', () => self.start());
     document.getElementById('resume-btn').addEventListener('click', () => self.resume());
+    document.querySelectorAll('[data-support]').forEach((button) => {
+      button.addEventListener('click', () => self.chooseSupport(button.dataset.support));
+    });
     this.canvas.addEventListener('click', () => {
       if (self.state === 'pause') self.resume();
       else if (self.state === 'playing') self.input.requestLock();
@@ -162,11 +177,14 @@
     p.ammo.bomb = 4;
     p.score = 0; p.kills = 0; p.combo = 0; p.comboTimer = 0;
     p.invuln = 0; p.weaponCd = 0; p.channelTimer = 0; p.channelSkill = null;
+    p.manaRegenBonus = 0;
     this.skillCd.dragonfire = this.skillCd.meteor = this.skillCd.fireball = 0;
     this.wave = 1;
     this.waveBreak = 0;
     this.enemies.clear();
     this.fx.clear();
+    this.progression.reset();
+    this.objectives.startRun();
     this.hands.setWeapon(0);
     this.hands.setSkill(2);
     this.state = 'playing';
@@ -188,19 +206,29 @@
   };
 
   Game.prototype.onWaveClear = function (n) {
-    this.player.score += n * 120;
+    const result = this.objectives.completeWave();
+    this.player.score += n * 120 + result.protected * 25 + Math.round(result.integrity);
     if (n >= 10) {
       this.gameOver(true);
       return;
     }
     this.wave = n + 1;
-    this.waveBreak = 4.2;
-    this.hud.toast('웨이브 ' + n + ' 클리어! 🎉\n다음 웨이브 준비', 2.6);
+    this.waveBreak = 0;
+    this.state = 'support';
+    this.hud.screen('support');
+    if (document.exitPointerLock) document.exitPointerLock();
     this.sfx.wave();
-    // 보상: 탄약·폭탄·마나 조금
-    this.player.ammo.blaster = Math.min(L.weaponById('blaster').ammoMax, this.player.ammo.blaster + 14);
-    this.player.ammo.bomb = Math.min(L.weaponById('bomb').ammoMax, this.player.ammo.bomb + 2);
-    this.player.mana = Math.min(P.maxMana, this.player.mana + 40);
+  };
+  Game.prototype.chooseSupport = function (kind) {
+    if (this.state !== 'support') return false;
+    const message = this.progression.choose(kind);
+    if (!message) return false;
+    this.state = 'playing';
+    this.waveBreak = 2.2;
+    this.hud.screen(null);
+    this.hud.toast(message + '\n다음 웨이브 준비', 1.8);
+    this.input.requestLock();
+    return true;
   };
 
   Game.prototype.onKill = function (e) {
@@ -229,8 +257,9 @@
     }
   };
 
-  Game.prototype.gameOver = function (win) {
+  Game.prototype.gameOver = function (win, reason) {
     this.state = 'over';
+    this.failureReason = reason || (win ? 'win' : 'player');
     this.player.channelTimer = 0;
     if (this.player.score > this.best) {
       this.best = this.player.score;
@@ -241,7 +270,9 @@
     this.hud.showTouch(false);
     this.hud.gameOver({
       wave: this.wave, score: this.player.score, kills: this.player.kills,
-      best: this.best, win: !!win,
+      best: this.best, win: !!win, reason: this.failureReason,
+      integrity: this.objectives.integrity, maxIntegrity: this.objectives.maxIntegrity,
+      saved: this.objectives.saved, lost: this.objectives.lost,
     });
     if (win) this.sfx.wave(); else this.sfx.gameOver();
   };
@@ -398,7 +429,7 @@
     if (p.weaponCd > 0) p.weaponCd -= dt;
     for (const k in this.skillCd) if (this.skillCd[k] > 0) this.skillCd[k] -= dt;
     if (p.invuln > 0) p.invuln -= dt;
-    p.mana = Math.min(P.maxMana, p.mana + P.manaRegen * dt);
+    p.mana = Math.min(P.maxMana, p.mana + (P.manaRegen + p.manaRegenBonus) * dt);
     if (p.comboTimer > 0) {
       p.comboTimer -= dt;
       if (p.comboTimer <= 0) p.combo = 0;
@@ -437,40 +468,7 @@
       a.police.lights[1].material.color.setHex(on ? 0x123a63 : 0x63b3ff);
     }
 
-    // 시민: 인도를 오가고, 몬스터가 가까우면 도망친다
-    const npcs = this.city.npcs;
-    for (let i = 0; i < npcs.length; i++) {
-      const n = npcs[i];
-      n.phase += dt * 2.4;
-      const near = this.enemies.hitTest(n.fig.position, 16);
-      if (near) n.scared = 1.6;
-      if (n.scared > 0) {
-        n.scared -= dt;
-        // 몬스터 반대쪽으로 종종걸음
-        this._tmp.set(n.fig.position.x - (near ? near.pos.x : 0), 0, n.fig.position.z - (near ? near.pos.z : -1));
-        if (this._tmp.lengthSq() < 0.01) this._tmp.set(0, 0, 1);
-        this._tmp.normalize();
-        n.fig.position.x += this._tmp.x * 15 * dt;
-        n.fig.position.z += this._tmp.z * 15 * dt;
-        n.fig.rotation.y = Math.atan2(this._tmp.x, this._tmp.z);
-        L.animateWalk(n.fig, n.phase * 2.2, 1);
-      } else if (n.patrol) {
-        // 제자리 근처를 왕복
-        n.fig.position.z += n.dir * 5.2 * dt;
-        if (Math.abs(n.fig.position.z - n.home.y) > 7) n.dir *= -1;
-        n.fig.position.x += (n.home.x - n.fig.position.x) * dt * 1.6;
-        n.fig.rotation.y = n.dir > 0 ? 0 : Math.PI;
-        L.animateWalk(n.fig, n.phase, 0.5);
-      } else {
-        L.animateWalk(n.fig, n.phase * 0.35, 0.06);
-      }
-      // 인도 밖으로 너무 나가지 않게
-      const px = n.fig.position.x;
-      if (Math.abs(px) < 14) n.fig.position.x = px < 0 ? -14 : 14;
-      if (Math.abs(px) > 30) n.fig.position.x = px < 0 ? -30 : 30;
-      if (n.fig.position.z > 38) n.fig.position.z = 38;
-      if (n.fig.position.z < -60) n.fig.position.z = -60;
-    }
+    this.objectives.updateCitizens(dt, this.enemies);
   };
 
   /** 조준선 앞에 있는 몬스터까지의 거리(없으면 0) — 접사 초점을 맞추는 데 쓴다 */
@@ -511,18 +509,15 @@
       this.sun.target.position.set(this.player.pos.x, 0, this.player.pos.z - 10);
       this.sun.target.updateMatrixWorld();
 
-      this.enemies.update(dt, this.player.pos, this.camera);
-      this.fx.update(dt, {
-        enemies: this.enemies,
-        playerPos: this.player.pos,
-        collectStud: (kind) => this.collectStud(kind),
-      });
+      this.enemies.update(dt, this.player.pos, this.camera, this.objectives);
+      this.fx.update(dt, this._fxContext);
       this.hands.update(dt, speed01, false);
 
       // 웨이브 사이 쉬는 시간
       if (!this.enemies.waveActive && this.waveBreak > 0) {
         this.waveBreak -= dt;
         if (this.waveBreak <= 0) {
+          this.objectives.startWave(this.wave);
           this.enemies.startWave(this.wave);
           this.hud.toast('웨이브 ' + this.wave + (this.wave % 5 === 0 ? '\n🐲 보스가 온다!' : ''), 2.0);
           this.sfx.wave();
@@ -542,6 +537,11 @@
         weaponCd: this.player.weaponCd,
         skillCd: this.skillCd,
         boss: this.enemies.boss,
+        integrity: this.objectives.integrity,
+        maxIntegrity: this.objectives.maxIntegrity,
+        citizensSaved: this.objectives.waveSaved,
+        citizensLost: this.objectives.waveLost,
+        citizensTotal: this.city.npcs.length,
       });
     } else {
       // 멈춘 동안에도 도시는 살아있게(시작 화면 배경)

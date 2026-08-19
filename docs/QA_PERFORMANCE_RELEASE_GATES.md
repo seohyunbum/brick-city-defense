@@ -108,8 +108,8 @@ Playwright smoke는 CI 호환을 위해 headless software/installed Chrome을 �
 | CI-before-deploy | 자동 | workflow 반영 |
 | postdeploy SHA | 자동 | workflow 반영 |
 | target hardware | 수동+trace | FAIL/증거 없음 |
-| 20분 soak/pool | 자동+수동 | FAIL/미구현 |
-| defense objective | 자동+playtest | FAIL/미구현 |
+| 20분 soak/pool | 자동+수동 | PARTIAL/풀 초과 손실 0 회귀 PASS, 20분 soak 없음 |
+| defense objective | 자동+playtest | PARTIAL/자동 기능 PASS, seed 20개·사용자 검증 없음 |
 | accessibility/settings | 자동+수동 | FAIL/미구현 |
 | music/mix | 수동+tool | FAIL/미구현 |
 

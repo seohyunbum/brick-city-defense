@@ -26,12 +26,14 @@ P0는 공개 배포의 진실성·안전·재현성을 막는 항목, P1은 core
 
 ### B1. Defense Objective
 
-- 도시 무결도, 거점, 시민 구조 상태 구현
-- 적 target 선택을 player-only에서 objective-aware로 분리
-- 승패/결과 화면에 시민·도시 지표 포함
-- 시민 공격 무효, 거점 damage, repair 선택 회귀테스트
+- [x] 도시 무결도, 거점, 시민 대피 상태 구현
+- [x] 적 target 선택을 player-only에서 objective-aware로 분리
+- [x] 승패/결과 화면에 시민·도시 지표 포함
+- [x] 시민 공격 무효, 거점 damage, repair 선택 자동 회귀테스트
+- [x] 보상 pool 초과 시 즉시 지급·손실 0 계측
+- [ ] deterministic seed 20개와 보호/무시 사용자 플레이테스트
 
-완료: 보호/무시 플레이의 승패·점수가 다르고 deterministic seed 20개에서 재현.
+현재 판정: 자동 기능 계약 PASS, 플레이테스트·seed 재현·10웨이브 밸런스는 미완료. 전체 완료는 보호/무시 플레이의 승패·점수가 다르고 deterministic seed 20개에서 재현될 때다.
 
 ### B2. 첫 60초와 설정
 
@@ -101,7 +103,7 @@ P2는 P0/P1 기준을 완화할 권한이 없다. 장식 때문에 판독성·�
 | file://와 GLB 충돌 | 상/상 | build-time classic bundle pilot | 한 경로라도 smoke FAIL |
 | 외부 팩으로 용량·draw 폭증 | 상/상 | 선택 1개 A/B, hard cap | +2MB/+50 calls 초과 |
 | 성능 gate 허위 녹색 | 중/상 | hardware trace와 headless 분리 | 장치/trace 없는 FPS 주장 |
-| 보상 pool 포화로 난이도 변동 | 상/중 | exhaustion counter/recycle | gameplay drop 유실 1건 |
+| 보상 pool 포화로 난이도 변동 | 중/중 | 초과 보상 즉시 지급+overflow/lost 계측 | gameplay drop 유실 1건 |
 | 아동 접근성 미흡 | 상/상 | first-user·settings·motion gate | P0 접근성 FAIL |
 | architecture 재비대화 | 상/중 | line ratchet, extract-first | game/city 줄 수 증가 |
 | BGM license/Content ID | 중/상 | exact track/NOTICE/repo 권리 | license 불명/NC/ND |
