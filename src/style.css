@@ -1,0 +1,260 @@
+/* =========================================================================
+ * style.css — 레고 느낌의 HUD (노란 스터드 · 파란 판 · 두꺼운 라운드)
+ * ========================================================================= */
+:root {
+  --lego-red: #c91a09;
+  --lego-blue: #0055bf;
+  --lego-yellow: #f2cd37;
+  --lego-green: #4b9f4a;
+  --lego-dark: #17222b;
+  --panel: rgba(14, 24, 32, 0.72);
+  --stroke: rgba(255, 255, 255, 0.22);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  background: #0d1620;
+  font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  color: #fff;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app { position: fixed; inset: 0; }
+#scene { display: block; width: 100%; height: 100%; }
+
+.hidden { display: none !important; }
+
+/* ------------------------------------------------------------- 조준점 */
+#crosshair {
+  position: fixed; left: 50%; top: 50%; width: 46px; height: 46px;
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+#crosshair span {
+  position: absolute; background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+#crosshair span:nth-child(1) { left: 50%; top: 0; width: 2px; height: 13px; margin-left: -1px; }
+#crosshair span:nth-child(2) { left: 50%; bottom: 0; width: 2px; height: 13px; margin-left: -1px; }
+#crosshair span:nth-child(3) { top: 50%; left: 0; height: 2px; width: 13px; margin-top: -1px; }
+#crosshair span:nth-child(4) { top: 50%; right: 0; height: 2px; width: 13px; margin-top: -1px; }
+#crosshair i {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+  background: var(--lego-yellow); border-radius: 50%; box-shadow: 0 0 4px #000;
+}
+
+#hitmark {
+  position: fixed; left: 50%; top: 50%; width: 34px; height: 34px;
+  margin: -17px 0 0 -17px; pointer-events: none; opacity: 0;
+  background:
+    linear-gradient(45deg, transparent 44%, #fff 44%, #fff 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, #fff 44%, #fff 56%, transparent 56%);
+  transition: opacity 0.12s linear;
+}
+#hitmark.on { opacity: 1; }
+
+#hurt-flash {
+  position: fixed; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 55%, rgba(201, 26, 9, 0) 45%, rgba(201, 26, 9, 0.72) 100%);
+  transition: opacity 0.25s ease-out;
+}
+#hurt-flash.on { opacity: 1; transition: opacity 0.05s linear; }
+
+/* ------------------------------------------------------------- 상단 */
+#top-bar {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 10px; pointer-events: none;
+}
+#top-bar .panel {
+  background: var(--panel); border: 2px solid var(--stroke); border-radius: 14px;
+  padding: 6px 16px; text-align: center; min-width: 92px;
+  backdrop-filter: blur(4px);
+}
+#top-bar .label { font-size: 11px; letter-spacing: 1px; opacity: 0.75; }
+#top-bar .value { font-size: 22px; font-weight: 800; line-height: 1.15; }
+#combo-panel { transition: transform 0.12s ease-out; }
+#combo-panel.pop { transform: scale(1.16); }
+#combo-panel .value { color: var(--lego-yellow); }
+
+/* ------------------------------------------------------------- 보스 체력 */
+#boss-bar {
+  position: fixed; top: 92px; left: 50%; transform: translateX(-50%);
+  width: min(560px, 78vw); pointer-events: none; text-align: center;
+}
+.boss-name { font-size: 15px; font-weight: 800; text-shadow: 0 2px 6px #000; margin-bottom: 4px; }
+.boss-track {
+  height: 16px; border-radius: 10px; background: rgba(0, 0, 0, 0.55);
+  border: 2px solid var(--stroke); overflow: hidden;
+}
+.boss-fill {
+  height: 100%; width: 100%; border-radius: 8px;
+  background: linear-gradient(90deg, #ff7a18, #c91a09);
+  transition: width 0.15s linear;
+}
+
+/* ------------------------------------------------------------- 토스트 */
+#toast {
+  position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+  font-size: 34px; font-weight: 900; text-align: center; letter-spacing: 1px;
+  text-shadow: 0 4px 14px rgba(0, 0, 0, 0.85); opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  white-space: pre-line; line-height: 1.35;
+}
+#toast.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+/* ------------------------------------------------------------- 체력·마나 */
+#vitals { position: fixed; left: 16px; bottom: 16px; pointer-events: none; }
+#hearts { display: flex; gap: 5px; margin-bottom: 8px; }
+.heart {
+  width: 26px; height: 26px; font-size: 22px; line-height: 26px; text-align: center;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.heart.empty { opacity: 0.25; transform: scale(0.82); }
+#mana-wrap {
+  position: relative; width: 200px; height: 20px; border-radius: 11px;
+  background: rgba(0, 0, 0, 0.55); border: 2px solid var(--stroke); overflow: hidden;
+}
+#mana-fill {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, #3ac0f0, #0055bf);
+  transition: width 0.1s linear;
+}
+#mana-text {
+  position: absolute; inset: 0; font-size: 12px; font-weight: 700; line-height: 18px;
+  text-align: center; text-shadow: 0 1px 3px #000;
+}
+
+/* ------------------------------------------------------------- 손 슬롯 */
+.slot-group { position: fixed; bottom: 14px; pointer-events: none; }
+/* 손 위치와 같은 쪽에 둔다: 왼손 두루마리는 왼쪽, 오른손 무기는 오른쪽 */
+#left-slots { left: 16px; bottom: 104px; }
+#right-slots { right: 16px; }
+.slot-title {
+  display: inline-block; font-size: 11px; font-weight: 700; margin-bottom: 5px;
+  background: var(--panel); border: 1px solid var(--stroke); border-radius: 8px;
+  padding: 2px 8px; text-shadow: 0 1px 2px #000;
+}
+#right-slots { text-align: right; }
+.slot-row { display: flex; gap: 8px; }
+.slot {
+  position: relative; width: 78px; padding: 6px 4px 5px; border-radius: 12px;
+  background: var(--panel); border: 2px solid var(--stroke); text-align: center;
+  overflow: hidden; transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.slot .emoji { font-size: 22px; line-height: 1.1; }
+.slot .name { font-size: 11px; font-weight: 700; }
+.slot .meta { font-size: 10px; opacity: 0.8; height: 13px; }
+.slot .key {
+  position: absolute; top: 3px; left: 4px; font-size: 10px; font-weight: 800;
+  background: var(--lego-yellow); color: #17222b; border-radius: 5px; padding: 0 4px;
+}
+.slot.active { border-color: var(--lego-yellow); transform: translateY(-6px) scale(1.06); }
+#left-slots .slot.active { border-color: #ff7a18; }
+.slot.empty .emoji, .slot.empty .name { opacity: 0.35; }
+.slot .cd {
+  position: absolute; inset: auto 0 0 0; height: 0%;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* ------------------------------------------------------------- 화면(시작/종료) */
+.screen {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 40%, rgba(11, 32, 52, 0.82), rgba(6, 12, 18, 0.95));
+  backdrop-filter: blur(3px); z-index: 20; padding: 16px; overflow: auto;
+}
+.sheet {
+  width: min(880px, 96vw); background: rgba(12, 22, 30, 0.9);
+  border: 3px solid rgba(255, 255, 255, 0.18); border-radius: 22px;
+  padding: 22px 26px 26px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.sheet.small { width: min(460px, 94vw); }
+.sheet h1 { font-size: 40px; margin: 4px 0 6px; letter-spacing: 2px; }
+.sheet h2 { font-size: 28px; margin: 6px 0 10px; }
+.brick {
+  display: inline-block; padding: 4px 12px; margin: 0 3px; border-radius: 8px;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.25), 0 4px 0 rgba(0, 0, 0, 0.35);
+}
+.brick.red { background: var(--lego-red); }
+.brick.yellow { background: var(--lego-yellow); color: #17222b; }
+.brick.blue { background: var(--lego-blue); }
+.brick.green { background: var(--lego-green); }
+.sub { opacity: 0.85; margin: 0 0 16px; font-size: 15px; }
+
+.hands-help { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.hand-card {
+  flex: 1 1 300px; min-width: 260px; text-align: left; border-radius: 16px; padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06); border: 2px solid rgba(255, 255, 255, 0.14);
+}
+.hand-card.right { border-color: rgba(242, 205, 55, 0.5); }
+.hand-card.left { border-color: rgba(255, 122, 24, 0.5); }
+.hand-card h3 { margin: 2px 0 8px; font-size: 16px; }
+.hand-card ul { margin: 0; padding-left: 2px; list-style: none; }
+.hand-card li { font-size: 13px; margin: 5px 0; opacity: 0.92; }
+.hand-card li b { margin-right: 4px; }
+.hand-card .fire { margin-top: 8px; font-size: 12px; opacity: 0.8; }
+.k {
+  display: inline-block; background: var(--lego-yellow); color: #17222b; font-weight: 800;
+  border-radius: 5px; padding: 0 5px; font-size: 11px; margin-right: 5px;
+}
+
+.keys {
+  display: flex; gap: 8px 14px; flex-wrap: wrap; justify-content: center;
+  margin: 16px 0 6px; font-size: 12px; opacity: 0.85;
+}
+.keys b { color: var(--lego-yellow); }
+
+button {
+  margin-top: 12px; font: 800 19px/1 inherit; color: #17222b;
+  background: var(--lego-yellow); border: none; border-radius: 14px;
+  padding: 14px 34px; cursor: pointer;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.22), 0 6px 0 #8f7513;
+}
+button:active { transform: translateY(3px); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22), 0 3px 0 #8f7513; }
+.tip { font-size: 12px; opacity: 0.7; margin: 12px 0 0; line-height: 1.6; }
+
+.result { display: grid; gap: 8px; margin: 12px 0 4px; }
+.result div {
+  display: flex; justify-content: space-between; font-size: 15px;
+  background: rgba(255, 255, 255, 0.06); border-radius: 10px; padding: 8px 14px;
+}
+.result b { color: var(--lego-yellow); }
+
+/* ------------------------------------------------------------- 터치 조작 */
+#touch { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+#stick {
+  position: absolute; left: 22px; bottom: 96px; width: 132px; height: 132px;
+  border-radius: 50%; background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.25); pointer-events: auto;
+}
+#stick-knob {
+  position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px;
+  border-radius: 50%; background: rgba(242, 205, 55, 0.8); border: 2px solid #fff;
+}
+#touch-buttons { position: absolute; right: 18px; bottom: 96px; display: flex; gap: 12px; align-items: flex-end; }
+.tbtn {
+  pointer-events: auto; margin: 0; width: 76px; height: 76px; border-radius: 50%;
+  font-size: 30px; padding: 0; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.22), 0 4px 0 #8f7513;
+}
+.tbtn.big { width: 96px; height: 96px; font-size: 38px; }
+.tbtn.small {
+  width: auto; height: 40px; border-radius: 12px; font-size: 13px; padding: 0 14px;
+  background: rgba(14, 24, 32, 0.8); color: #fff; box-shadow: none;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+#touch-swap { position: absolute; right: 18px; bottom: 186px; display: grid; gap: 8px; justify-items: end; }
+
+/* 좁은 화면에서는 HUD를 줄인다 */
+@media (max-width: 820px) {
+  #left-slots { bottom: 96px; }
+  .slot { width: 62px; }
+  .slot .emoji { font-size: 18px; }
+  .slot .name { font-size: 10px; }
+  #top-bar .panel { min-width: 74px; padding: 4px 10px; }
+  #top-bar .value { font-size: 18px; }
+  #mana-wrap { width: 150px; }
+  .sheet h1 { font-size: 30px; }
+}

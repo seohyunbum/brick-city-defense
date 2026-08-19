@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0055bf" />
+<meta name="description" content="브릭 몬스터로부터 장난감 도시와 시민을 지키는 1인칭 방어 게임" />
+<meta property="og:title" content="레고 시티 — 브릭 몬스터 방어전" />
+<meta property="og:description" content="검·폭탄·마법 두루마리로 브릭 몬스터의 10개 웨이브를 막아라!" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://seohyunbum.github.io/lego-city-game/" />
+<meta property="og:image" content="https://seohyunbum.github.io/lego-city-game/assets/icons/icon-512.png" />
+<link rel="canonical" href="https://seohyunbum.github.io/lego-city-game/" />
+<title>레고 시티 — 브릭 몬스터 방어전</title>
+<link rel="icon" type="image/x-icon" href="./assets/icons/brick-city-defense.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-32.png" />
+<link rel="apple-touch-icon" sizes="192x192" href="./assets/icons/icon-192.png" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- ================= HUD ================= -->
+  <div id="hud" class="hidden">
+    <div id="crosshair"><span></span><span></span><span></span><span></span><i></i></div>
+    <div id="hitmark"></div>
+    <div id="hurt-flash"></div>
+
+    <div id="top-bar">
+      <div class="panel">
+        <div class="label">웨이브</div>
+        <div class="value" id="wave-value">1</div>
+      </div>
+      <div class="panel">
+        <div class="label">남은 몬스터</div>
+        <div class="value" id="left-value">0</div>
+      </div>
+      <div class="panel">
+        <div class="label">점수</div>
+        <div class="value" id="score-value">0</div>
+      </div>
+      <div class="panel" id="combo-panel">
+        <div class="label">연속</div>
+        <div class="value" id="combo-value">0</div>
+      </div>
+    </div>
+
+    <div id="boss-bar" class="hidden">
+      <div class="boss-name">🐲 브릭 드래곤</div>
+      <div class="boss-track"><div class="boss-fill" id="boss-fill"></div></div>
+    </div>
+
+    <div id="toast"></div>
+
+    <div id="vitals">
+      <div id="hearts"></div>
+      <div id="mana-wrap">
+        <div id="mana-fill"></div>
+        <span id="mana-text">100 / 100</span>
+      </div>
+    </div>
+
+    <!-- 왼손: 두루마리 스킬 -->
+    <div class="slot-group" id="left-slots">
+      <div class="slot-title">📜 왼손 · 두루마리 스킬</div>
+      <div class="slot-row" id="left-row"></div>
+    </div>
+
+    <!-- 오른손: 무기 -->
+    <div class="slot-group" id="right-slots">
+      <div class="slot-title">✋ 오른손 · 무기</div>
+      <div class="slot-row" id="right-row"></div>
+    </div>
+  </div>
+
+  <!-- ================= 시작 화면 ================= -->
+  <div id="start-screen" class="screen">
+    <div class="sheet">
+      <h1><span class="brick red">레</span><span class="brick yellow">고</span>
+          <span class="brick blue">시</span><span class="brick green">티</span></h1>
+      <p class="sub">브릭 몬스터가 도시로 몰려온다. 시민들을 지켜라!</p>
+
+      <div class="hands-help">
+        <div class="hand-card right">
+          <h3>✋ 오른손 — 무기</h3>
+          <ul>
+            <li><b>🗡️ 검</b> <span class="k">1</span> 가까이 온 무리를 한 번에</li>
+            <li><b>🔫 총</b> <span class="k">2</span> 스터드 탄 연사</li>
+            <li><b>💣 폭탄</b> <span class="k">3</span> 던져서 크게 터뜨리기</li>
+          </ul>
+          <div class="fire">마우스 <b>왼쪽 클릭</b> 으로 공격</div>
+        </div>
+        <div class="hand-card left">
+          <h3>📜 왼손 — 두루마리 스킬</h3>
+          <ul>
+            <li><b>🐲 드래곤 파이어</b> <span class="k">4</span> 불을 계속 뿜는다</li>
+            <li><b>☄️ 메테오</b> <span class="k">5</span> 조준한 곳에 운석</li>
+            <li><b>🔥 파이어볼</b> <span class="k">6</span> 값싼 불덩이</li>
+          </ul>
+          <div class="fire">마우스 <b>오른쪽 클릭</b> 또는 <b>Space</b> 로 시전</div>
+        </div>
+      </div>
+
+      <div class="keys">
+        <span><b>W A S D</b> 이동</span>
+        <span><b>Shift</b> 달리기</span>
+        <span><b>마우스</b> 둘러보기</span>
+        <span><b>휠</b> 무기 바꾸기</span>
+        <span><b>Q / E</b> 무기 · 두루마리 넘기기</span>
+        <span><b>Esc</b> 잠깐 멈춤</span>
+      </div>
+
+      <button id="start-btn">게임 시작</button>
+      <p class="tip">스터드(노란 알맹이)를 주우면 마나가, 파란 알맹이는 총알과 폭탄이 채워진다.<br />
+        시민 미니피그는 공격 대상이 아니다 — 몬스터만 잡는다.</p>
+    </div>
+  </div>
+
+  <!-- ================= 종료 화면 ================= -->
+  <div id="over-screen" class="screen hidden">
+    <div class="sheet small">
+      <h2 id="over-title">도시가 무너졌다…</h2>
+      <div class="result">
+        <div><span>도달 웨이브</span><b id="over-wave">1</b></div>
+        <div><span>점수</span><b id="over-score">0</b></div>
+        <div><span>잡은 몬스터</span><b id="over-kills">0</b></div>
+        <div><span>최고 점수</span><b id="over-best">0</b></div>
+      </div>
+      <button id="again-btn">다시 하기</button>
+    </div>
+  </div>
+
+  <!-- ================= 일시정지 ================= -->
+  <div id="pause-screen" class="screen hidden">
+    <div class="sheet small">
+      <h2>잠깐 멈춤</h2>
+      <p class="sub">화면을 클릭하면 다시 시작한다.</p>
+      <button id="resume-btn">이어서 하기</button>
+    </div>
+  </div>
+
+  <!-- ================= 폰 터치 조작 ================= -->
+  <div id="touch" class="hidden">
+    <div id="stick"><div id="stick-knob"></div></div>
+    <div id="touch-buttons">
+      <button id="btn-skill" class="tbtn">📜</button>
+      <button id="btn-attack" class="tbtn big">✋</button>
+    </div>
+    <div id="touch-swap">
+      <button id="btn-swap-weapon" class="tbtn small">무기 ▸</button>
+      <button id="btn-swap-skill" class="tbtn small">두루마리 ▸</button>
+    </div>
+  </div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
+<script src="./src/bricks.js"></script>
+<script src="./src/loadout.js"></script>
+<script src="./src/minifig.js"></script>
+<script src="./src/city.js"></script>
+<script src="./src/hands.js"></script>
+<script src="./src/postfx.js"></script>
+<script src="./src/fx.js"></script>
+<script src="./src/enemies.js"></script>
+<script src="./src/audio.js"></script>
+<script src="./src/hud.js"></script>
+<script src="./src/input.js"></script>
+<script src="./src/game.js"></script>
+</body>
+</html>
