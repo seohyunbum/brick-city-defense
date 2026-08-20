@@ -1,0 +1,101 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>브릭 시티 — 월드 렌더 예산 계측</title>
+<style>
+  body { margin:0; background:#0d1117; color:#e6edf3; font:13px/1.6 monospace; }
+  #hud { position:fixed; left:10px; top:10px; background:#161b22cc; padding:10px 14px;
+         border:1px solid #30363d; border-radius:6px; white-space:pre; z-index:5; }
+  canvas { display:block; }
+</style>
+<div id="hud">측정 중…</div>
+<script src="../vendor/three.min.js"></script>
+<script>window.LEGO = window.LEGO || {};</script>
+<script src="../src/rounded-box.js"></script>
+<script src="../src/bricks.js"></script>
+<script src="../src/rng.js"></script>
+<script src="../src/geo-merge.js"></script>
+<script src="../src/districts.js"></script>
+<script src="../src/world.js"></script>
+<script>
+(function () {
+  const L = window.LEGO;
+  const renderer = new THREE.WebGLRenderer({ antialias: false });
+  renderer.setPixelRatio(1);
+  renderer.setSize(1280, 720);
+  document.body.appendChild(renderer.domElement);
+  THREE.ColorManagement.legacyMode = false;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(70, 1280 / 720, 0.5, 2400);
+
+  scene.add(new THREE.HemisphereLight(L.COLORS.lookSky, L.COLORS.lookHemiGround, 1.05));
+  const sun = new THREE.DirectionalLight(L.COLORS.lookSun, 1.5);
+  sun.position.set(80, 160, 60);
+  scene.add(sun);
+
+  const world = L.World.create(scene, { seed: 20260821 });
+
+  // 월드 전역을 훑는 표본 지점 — "어느 지점에서 측정해도" 예산을 지켜야 한다
+  const SAMPLES = [];
+  for (let i = 0; i < 24; i++) {
+    const a = i / 24 * Math.PI * 2;
+    const r = 60 + (i % 4) * 220;
+    SAMPLES.push({ x: Math.cos(a) * r, z: Math.sin(a) * r });
+  }
+  SAMPLES.push({ x: 32, z: 32 });          // 중앙 광장
+  SAMPLES.push({ x: -8 * 64, z: -8 * 64 }); // 공사장 랜드마크
+  SAMPLES.push({ x: 12 * 64, z: 0 });       // 항구
+
+  const results = [];
+  let idx = 0;
+
+  function measureOne(p) {
+    world.prime(p.x, p.z);
+    camera.position.set(p.x, 4.6, p.z);
+    let worstCalls = 0, worstTris = 0;
+    // 8방위를 돌며 최악값을 잡는다 — 평균은 예산 근거가 되지 못한다
+    for (let d = 0; d < 8; d++) {
+      camera.rotation.set(0, d / 8 * Math.PI * 2, 0);
+      renderer.info.reset();
+      renderer.render(scene, camera);
+      const c = renderer.info.render.calls, t = renderer.info.render.triangles;
+      if (c > worstCalls) worstCalls = c;
+      if (t > worstTris) worstTris = t;
+    }
+    const st = world.stats();
+    return { x: Math.round(p.x), z: Math.round(p.z), calls: worstCalls, tris: worstTris, chunks: st.chunks };
+  }
+
+  function step() {
+    if (idx < SAMPLES.length) {
+      results.push(measureOne(SAMPLES[idx]));
+      idx++;
+      document.getElementById('hud').textContent = '측정 중… ' + idx + '/' + SAMPLES.length;
+      setTimeout(step, 0);
+      return;
+    }
+    const calls = results.map(r => r.calls), tris = results.map(r => r.tris);
+    const maxCalls = Math.max.apply(null, calls), maxTris = Math.max.apply(null, tris);
+    const worst = results[calls.indexOf(maxCalls)];
+    const summary = {
+      samples: results.length,
+      maxCalls, maxTris,
+      avgCalls: Math.round(calls.reduce((a, b) => a + b, 0) / calls.length),
+      avgTris: Math.round(tris.reduce((a, b) => a + b, 0) / tris.length),
+      chunks: worst.chunks,
+      callBudget: 650, triBudget: 125000,
+      passCalls: maxCalls <= 650, passTris: maxTris <= 125000,
+      worstAt: worst.x + ',' + worst.z,
+    };
+    window.__BENCH__ = { summary, results };
+    document.getElementById('hud').textContent =
+      '표본 ' + summary.samples + ' 지점 × 8방위 (최악값)\n' +
+      '드로우콜 최대 ' + maxCalls + ' / 650  ' + (summary.passCalls ? 'PASS' : 'FAIL') + '\n' +
+      '삼각형   최대 ' + maxTris + ' / 125000  ' + (summary.passTris ? 'PASS' : 'FAIL') + '\n' +
+      '평균 ' + summary.avgCalls + ' calls / ' + summary.avgTris + ' tris\n' +
+      '유지 청크 ' + summary.chunks + '\n' +
+      '최악 지점 ' + summary.worstAt;
+  }
+  setTimeout(step, 60);
+})();
+</script>
