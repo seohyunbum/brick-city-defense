@@ -1,8 +1,12 @@
 /* world-budget.mjs — 월드 렌더 예산 계측 (브라우저 없이 결정적으로)
  *
- * 왜 node 인가: 카메라 각도 운에 좌우되는 렌더 표본 대신, 유지 반경 안 청크의
- * 정적 메시 수와 삼각형 수를 직접 센다. 프러스텀 컬링은 이 값을 더 낮추기만 하므로
- * 여기서 나온 수치는 **보수적 상한**이다. (GAME_DESIGN_SPEC §7)
+ * 무엇을 재는가: 유지 반경(7x7 청크)에 **상주하는** 정적 지오메트리 총량이다.
+ * per-frame 드로우 비용이 아니라 업로드·메모리 규모다. FOV 70 에서 한 번에 보이는
+ * 청크는 1/5 안팎이라 실제 프레임 삼각형은 이 값의 절반 이하로 떨어진다.
+ *
+ * 그래서 이 수치를 렌더 예산(650/125,000)과 직접 비교하면 사과-오렌지다.
+ * per-frame 렌더 게이트의 정본은 `npm run smoke` 의 '월드 예산 확인'이고,
+ * 여기서는 상주 규모가 비정상적으로 부풀지 않았는지만 본다.
  */
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -10,7 +14,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const CALL_BUDGET = 650, TRI_BUDGET = 125000;
+// 상주 규모 상한 — 렌더 예산이 아니라 업로드·메모리 sanity 기준이다.
+const RESIDENT_MESH_MAX = 400;
+const RESIDENT_TRI_MAX = 220000;
 
 // three r150 UMD 와 클래식 <script> 모듈들을 하나의 전역 컨텍스트에서 돌린다
 const sandbox = { console, Math, Date, JSON, Object, Array, Float32Array, Uint16Array, Uint32Array };
@@ -20,6 +26,15 @@ vm.createContext(sandbox);
 
 const load = (rel) => vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf8'), sandbox, { filename: rel });
 
+// 캔버스 스텁 — 이 하네스는 지오메트리만 재므로 텍스처는 실제로 굽지 않는다.
+// (bricks.js 의 studCanvas/tileCanvas 가 2D 컨텍스트를 요구한다)
+const g2d = () => ({
+  fillStyle: '', strokeStyle: '', lineWidth: 0,
+  fillRect() {}, strokeRect() {}, beginPath() {}, arc() {}, fill() {}, stroke() {},
+  createRadialGradient: () => ({ addColorStop() {} }),
+  createLinearGradient: () => ({ addColorStop() {} }),
+});
+sandbox.document = { createElement: () => ({ width: 0, height: 0, getContext: g2d }) };
 load('vendor/three.min.js');
 vm.runInContext('window.LEGO = window.LEGO || {};', sandbox);
 for (const f of ['src/rounded-box.js', 'src/bricks.js', 'src/rng.js', 'src/geo-merge.js',
@@ -72,10 +87,11 @@ for (const r of rows) {
   console.log(r.n.padEnd(20), String(r.chunks).padStart(5), String(r.meshes).padStart(6),
               String(r.tris).padStart(9), String(r.colliders).padStart(8));
 }
-const passCalls = maxMesh <= CALL_BUDGET, passTris = maxTri <= TRI_BUDGET;
-console.log('\n--- 판정 ---');
-console.log(`드로우콜(정적 메시) 최대 ${maxMesh} / ${CALL_BUDGET}  ${passCalls ? 'PASS' : 'FAIL'}`);
-console.log(`삼각형 최대 ${maxTri} / ${TRI_BUDGET}  ${passTris ? 'PASS' : 'FAIL'}   (최악: ${worstT.n})`);
+const passCalls = maxMesh <= RESIDENT_MESH_MAX, passTris = maxTri <= RESIDENT_TRI_MAX;
+console.log('\n--- 판정 (상주 규모) ---');
+console.log(`상주 메시 최대 ${maxMesh} / ${RESIDENT_MESH_MAX}  ${passCalls ? 'PASS' : 'FAIL'}`);
+console.log(`상주 삼각형 최대 ${maxTri} / ${RESIDENT_TRI_MAX}  ${passTris ? 'PASS' : 'FAIL'}   (최악: ${worstT.n})`);
 console.log(`근접 콜라이더 최대 ${maxCol} (3x3 청크 기준은 이보다 훨씬 작음)`);
-console.log(`\n1.x 복도 1개 기준선: 드로우콜 467~499 / 삼각형 97,062~98,114`);
+console.log(`\nper-frame 렌더 예산(650 / 125,000) 판정은 npm run smoke 담당.
+1.x 복도 1개 기준선: 드로우콜 467~499 / 삼각형 97,062~98,114`);
 process.exit(passCalls && passTris ? 0 : 1);

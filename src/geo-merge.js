@@ -29,14 +29,35 @@
    * @param {THREE.BufferGeometry} geometry 원본 (변형하지 않는다)
    * @param {THREE.Matrix4} matrix 월드 배치
    * @param {number|THREE.Color} color 팔레트 색
-   * @param {number} [su] UV U 배율 — 크기가 달라도 스터드 간격을 일정하게 유지
-   * @param {number} [sv] UV V 배율
+   * @param {object} [opts]
+   * @param {number[]} [opts.uv] 균일 UV 배율 [su, sv]
+   * @param {number[][]} [opts.faceUV] 면별 UV 배율 — BoxGeometry 면 순서 +X,-X,+Y,-Y,+Z,-Z.
+   *        크기가 다른 브릭에도 스터드 피치를 일정하게 유지하려면 면마다 배율이 달라야 한다.
+   * @param {number[]} [opts.faces] 담을 면 인덱스 목록(BoxGeometry 전용). 생략하면 전부.
+   *        상단면(스터드)과 측면(이음선)을 서로 다른 메시로 갈라 담는 데 쓴다.
    */
-  Builder.prototype.add = function (geometry, matrix, color, su, sv) {
+  Builder.prototype.add = function (geometry, matrix, color, opts) {
     if (!geometry) return this;
+    opts = opts || {};
     const geo = geometry.index ? geometry.toNonIndexed() : geometry;
     const pos = geo.getAttribute('position');
     if (!pos) return this;
+
+    // 면 필터는 정점 구간으로 환산한다(비인덱스 BoxGeometry = 면당 6 정점)
+    let ranges = null, count = pos.count;
+    if (opts.faces) {
+      ranges = [];
+      count = 0;
+      for (let i = 0; i < opts.faces.length; i++) {
+        const f = opts.faces[i];
+        const start = f * 6;
+        if (start + 6 > pos.count) continue;
+        ranges.push(start);
+        count += 6;
+      }
+      if (!count) { if (geo !== geometry) geo.dispose(); return this; }
+    }
+
     _c.set(color);
     this.parts.push({
       geo,
@@ -44,10 +65,10 @@
       // 참조로 담으면 청크의 모든 조각이 '마지막 행렬' 하나로 변환돼 한 점에 뭉친다.
       mat: matrix ? matrix.clone() : null,
       r: _c.r, g: _c.g, b: _c.b, own: geo !== geometry,
-      su: su || 1, sv: sv === undefined ? (su || 1) : sv,
+      uv: opts.uv || null, faceUV: opts.faceUV || null, ranges,
     });
-    this.vertexCount += pos.count;
-    this.triCount += pos.count / 3;
+    this.vertexCount += count;
+    this.triCount += count / 3;
     return this;
   };
 
@@ -72,7 +93,19 @@
       const m = p.mat;
       if (m) _nm.getNormalMatrix(m);
 
-      for (let k = 0; k < ap.count; k++, v++) {
+      // 면 필터가 있으면 해당 정점만 뽑는다
+      let emit = null;
+      if (p.ranges) {
+        emit = [];
+        for (let q = 0; q < p.ranges.length; q++) {
+          const st = p.ranges[q];
+          for (let e = 0; e < 6; e++) emit.push(st + e);
+        }
+      }
+      const total = emit ? emit.length : ap.count;
+
+      for (let idx = 0; idx < total; idx++, v++) {
+        const k = emit ? emit[idx] : idx;
         let x = ap.getX(k), y = ap.getY(k), z = ap.getZ(k);
         if (m) {
           const e = m.elements;
@@ -95,7 +128,15 @@
         }
         normal[v * 3] = nx; normal[v * 3 + 1] = ny; normal[v * 3 + 2] = nz;
 
-        if (au) { uv[v * 2] = au.getX(k) * p.su; uv[v * 2 + 1] = au.getY(k) * p.sv; }
+        if (au) {
+          let su = 1, sv = 1;
+          if (p.faceUV) {
+            const f = p.faceUV[(k / 6) | 0] || p.faceUV[0];
+            su = f[0]; sv = f[1];
+          } else if (p.uv) { su = p.uv[0]; sv = p.uv[1]; }
+          uv[v * 2] = au.getX(k) * su;
+          uv[v * 2 + 1] = au.getY(k) * sv;
+        }
 
         color[v * 3] = p.r; color[v * 3 + 1] = p.g; color[v * 3 + 2] = p.b;
       }
@@ -113,6 +154,30 @@
     return out;
   };
 
+  /**
+   * 브릭 표면 재질 — 병합 메시 하나에 스터드/이음선 텍스처와 PBR 플라스틱을 함께 싣는다.
+   *
+   * 왜 Phong 이 아니라 Physical 인가: lookdev.js 가 scene.environment 로 PMREM 반사를 깔아두는데,
+   * 이는 Standard/Physical 계열에만 자동 적용된다. Phong 으로 두면 브릭 광택이 통째로 죽는다.
+   *
+   * repeat 는 (1,1)로 둔다 — 타일링 횟수는 이미 정점 UV 에 구워져 있다(faceUV).
+   * @param {string} kind 'stud'(윗면 돌기) | 'tile'(측면 이음선)
+   */
+  function brickMaterial(kind, override) {
+    const t = L.surfaceTextures(kind, 1, 1);
+    const base = {
+      vertexColors: true,
+      map: t.map, bumpMap: t.bump,
+      // 돌기는 요철로만 읽힌다(맵 자체는 거의 흰색). 약하면 브릭이 매끈한 상자로 보인다.
+      bumpScale: kind === 'tile' ? 0.16 : 0.34,
+      metalness: 0, roughness: kind === 'tile' ? 0.30 : 0.26,
+      clearcoat: 0.68, clearcoatRoughness: 0.16,
+      envMapIntensity: 0.58,
+    };
+    if (override) for (const k in override) base[k] = override[k];
+    return new THREE.MeshPhysicalMaterial(base);
+  }
+
   /** 병합 지오메트리 전용 재질 — 플라스틱 광택 규칙(CLAUDE.md §4)을 지킨다. */
   function mergedMaterial(opts) {
     opts = opts || {};
@@ -127,5 +192,6 @@
   L.Merge = {
     builder: function () { return new Builder(); },
     material: mergedMaterial,
+    brickMaterial: brickMaterial,
   };
 })(window.LEGO);

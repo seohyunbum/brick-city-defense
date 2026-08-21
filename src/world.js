@@ -38,32 +38,62 @@
   const _s = new THREE.Vector3();
   const _e = new THREE.Euler();
 
-  /** 축정렬 박스를 병합 대기열에 넣는다. 스터드 배율은 크기에 비례시킨다. */
-  function pushBox(b, cx, cy, cz, w, h, d, color, ry) {
+  const STUDU = 1.0;    // 스터드 가로 피치 (bricks.js STUD)
+  const BRICKH = 1.2;   // 브릭 1단 높이 (bricks.js BRICK)
+
+  /**
+   * 축정렬 박스를 병합 대기열에 넣는다.
+   *
+   * 면마다 UV 배율을 따로 준다 — 그래야 20 스터드 벽이든 3 스터드 블록이든
+   * 돌기·이음선 간격이 실물처럼 똑같이 유지된다. 하나의 배율로 뭉뚱그리면
+   * 큰 면에서는 무늬가 늘어나고 작은 면에서는 뭉개진다.
+   *
+   * 윗면(+Y)은 돌기 채널, 나머지는 이음선 채널로 갈라 담는다.
+   * @param {boolean} [smoothTop] 도로처럼 돌기가 없는 매끈한 판이면 true
+   */
+  function pushBox(b, cx, cy, cz, w, h, d, color, ry, smoothTop) {
     _p.set(cx, cy, cz);
     _s.set(w, h, d);
     _e.set(0, ry || 0, 0);
     _q.setFromEuler(_e);
     _m.compose(_p, _q, _s);
-    b.add(geos().box, _m, color, Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(d / 2)));
+    const box = geos().box;
+    const uX = [d / STUDU, h / BRICKH];
+    const uY = [w / STUDU, d / STUDU];
+    const uZ = [w / STUDU, h / BRICKH];
+    const faceUV = [uX, uX, uY, uY, uZ, uZ];
+    if (b.studs) {
+      if (smoothTop) {
+        b.ground.add(box, _m, color, { faceUV });   // 매트 — 아스팔트·차선
+      } else {
+        b.studs.add(box, _m, color, { faceUV, faces: [2] });               // +Y = 돌기
+        b.sides.add(box, _m, color, { faceUV, faces: [0, 1, 3, 4, 5] });
+      }
+    } else {
+      b.add(box, _m, color, { faceUV });    // 유리 등 단일 채널
+    }
+  }
+
+  /** 원통·원뿔·구는 돌기를 올리지 않는다 — 이음선 채널로만 간다. */
+  function pushRound(b, geo, cx, cy, cz, sx, sy, sz, color, uv) {
+    _p.set(cx, cy, cz); _s.set(sx, sy, sz); _q.identity();
+    _m.compose(_p, _q, _s);
+    (b.sides || b).add(geo, _m, color, { uv });
   }
 
   function pushCyl(b, cx, cy, cz, r, h, color) {
-    _p.set(cx, cy, cz); _s.set(r * 2, h, r * 2); _q.identity();
-    _m.compose(_p, _q, _s);
-    b.add(geos().cyl, _m, color, 1, 1);
+    pushRound(b, geos().cyl, cx, cy, cz, r * 2, h, r * 2, color,
+      [Math.max(1, (2 * Math.PI * r) / STUDU), Math.max(1, h / BRICKH)]);
   }
 
   function pushCone(b, cx, cy, cz, r, h, color) {
-    _p.set(cx, cy, cz); _s.set(r * 2, h, r * 2); _q.identity();
-    _m.compose(_p, _q, _s);
-    b.add(geos().cone, _m, color, 1, 1);
+    pushRound(b, geos().cone, cx, cy, cz, r * 2, h, r * 2, color,
+      [Math.max(1, (2 * Math.PI * r) / STUDU), Math.max(1, h / BRICKH)]);
   }
 
   function pushSph(b, cx, cy, cz, r, color) {
-    _p.set(cx, cy, cz); _s.set(r * 2, r * 2, r * 2); _q.identity();
-    _m.compose(_p, _q, _s);
-    b.add(geos().sph, _m, color, 1, 1);
+    pushRound(b, geos().sph, cx, cy, cz, r * 2, r * 2, r * 2, color,
+      [Math.max(1, (2 * Math.PI * r) / STUDU), Math.max(1, (Math.PI * r) / BRICKH)]);
   }
 
   /** 충돌 AABB 등록 — resolveCollision(city.js) 과 같은 형식 */
@@ -78,7 +108,7 @@
   /** 아스팔트 바닥 + 부지 인도. 도로는 64 배수 좌표에 깔린다. */
   function paveChunk(ctx, ox, oz) {
     // 청크 전체 아스팔트 한 장 — 교차로 겹침·z-fighting 을 원천 차단한다
-    pushBox(ctx.solid, ox + CHUNK / 2, -0.05, oz + CHUNK / 2, CHUNK, 0.1, CHUNK, C.darkGray);
+    pushBox(ctx.solid, ox + CHUNK / 2, -0.05, oz + CHUNK / 2, CHUNK, 0.1, CHUNK, C.black, 0, true);
 
     for (let lx = 0; lx < 2; lx++) {
       for (let lz = 0; lz < 2; lz++) {
@@ -97,8 +127,43 @@
       const rx = ox + i * LOT;
       const rz = oz + i * LOT;
       for (let t = 8; t < CHUNK; t += 32) {
-        pushBox(ctx.solid, rx, 0.02, oz + t, 1.1, 0.06, 7, C.white);
-        pushBox(ctx.solid, ox + t, 0.02, rz, 7, 0.06, 1.1, C.white);
+        pushBox(ctx.solid, rx, 0.02, oz + t, 1.1, 0.06, 7, C.white, 0, true);
+        pushBox(ctx.solid, ox + t, 0.02, rz, 7, 0.06, 1.1, C.white, 0, true);
+      }
+    }
+  }
+
+  /** 횡단보도 — 실물 도시의 가장 큰 시각 단서 중 하나. 교차로 네 방향에 깐다. */
+  function crosswalks(ctx, ox, oz) {
+    // 교차로는 자기 원점 것만 그린다. 4개를 다 그리면 이웃 청크와 겹쳐 4배로 낭비된다
+    // (그렇게 했다가 삼각형 147,828 로 예산을 넘겼다).
+    {
+      {
+        const ix = ox, iz = oz;
+        for (let k = -2; k <= 2; k++) {
+          const off = k * 3.0;
+          // 남/북 진입
+          pushBox(ctx.solid, ix + off, 0.03, iz - ROAD_HALF - 3.2, 1.5, 0.06, 5.2, C.white, 0, true);
+          pushBox(ctx.solid, ix + off, 0.03, iz + ROAD_HALF + 3.2, 1.5, 0.06, 5.2, C.white, 0, true);
+          // 동/서 진입
+          pushBox(ctx.solid, ix - ROAD_HALF - 3.2, 0.03, iz + off, 5.2, 0.06, 1.5, C.white, 0, true);
+          pushBox(ctx.solid, ix + ROAD_HALF + 3.2, 0.03, iz + off, 5.2, 0.06, 1.5, C.white, 0, true);
+        }
+      }
+    }
+  }
+
+  /** 연석 — 인도 가장자리 진회색 띠. 도로와 인도의 경계를 또렷하게 만든다. */
+  function curbs(ctx, ox, oz) {
+    for (let lx = 0; lx < 2; lx++) {
+      for (let lz = 0; lz < 2; lz++) {
+        const cx = ox + lx * LOT + LOT / 2;
+        const cz = oz + lz * LOT + LOT / 2;
+        const w = LOT - ROAD_HALF * 2;
+        pushBox(ctx.solid, cx, CURB_Y / 2, cz - w / 2, w + 1.2, CURB_Y + 0.06, 1.2, C.darkGray, 0, true);
+        pushBox(ctx.solid, cx, CURB_Y / 2, cz + w / 2, w + 1.2, CURB_Y + 0.06, 1.2, C.darkGray, 0, true);
+        pushBox(ctx.solid, cx - w / 2, CURB_Y / 2, cz, 1.2, CURB_Y + 0.06, w + 1.2, C.darkGray, 0, true);
+        pushBox(ctx.solid, cx + w / 2, CURB_Y / 2, cz, 1.2, CURB_Y + 0.06, w + 1.2, C.darkGray, 0, true);
       }
     }
   }
@@ -107,8 +172,13 @@
   function buildChunk(seed, cx, cz) {
     const rand = L.RNG.chunkRng(seed, cx, cz);
     const ox = cx * CHUNK, oz = cz * CHUNK;
+    // solid 는 단일 빌더가 아니라 채널 묶음이다.
+    // districts.js 는 ctx.solid 만 알면 되고, 돌기/이음선 분리는 pushBox 가 처리한다.
+    const studs = L.Merge.builder();
+    const sides = L.Merge.builder();
+    const ground = L.Merge.builder();
     const ctx = {
-      solid: L.Merge.builder(),
+      solid: { studs, sides, ground },
       glass: L.Merge.builder(),
       colliders: [],
       rand,
@@ -116,6 +186,10 @@
 
     paveChunk(ctx, ox, oz);
     laneMarks(ctx, ox, oz);
+    crosswalks(ctx, ox, oz);
+    curbs(ctx, ox, oz);
+    // 신호등은 소유 교차로 대각 모서리 하나에만 (횡단보도와 같은 소유권 규칙)
+    L.Districts.STREET.trafficLight(ctx, ox + ROAD_HALF + 3, oz + ROAD_HALF + 3);
 
     for (let lx = 0; lx < 2; lx++) {
       for (let lz = 0; lz < 2; lz++) {
@@ -128,19 +202,19 @@
     }
 
     const group = new THREE.Group();
-    const solidGeo = ctx.solid.build();
-    if (solidGeo) {
-      const mesh = new THREE.Mesh(solidGeo, mats().solid);
-      mesh.castShadow = false; mesh.receiveShadow = true;
+    const M = mats();
+    const attach = (geo, material, shadow) => {
+      if (!geo) return;
+      const mesh = new THREE.Mesh(geo, material);
+      mesh.castShadow = !!shadow;
+      mesh.receiveShadow = true;
       mesh.matrixAutoUpdate = false;
       group.add(mesh);
-    }
-    const glassGeo = ctx.glass.build();
-    if (glassGeo) {
-      const mesh = new THREE.Mesh(glassGeo, mats().glass);
-      mesh.matrixAutoUpdate = false;
-      group.add(mesh);
-    }
+    };
+    attach(studs.build(), M.studs, false);
+    attach(sides.build(), M.sides, true);
+    attach(ground.build(), M.ground, false);
+    attach(ctx.glass.build(), M.glass, false);
     group.matrixAutoUpdate = false;
     group.updateMatrix();
 
@@ -158,10 +232,19 @@
 
   function makeMaterials() {
     return {
-      solid: L.Merge.material({ shininess: 38 }),
-      glass: new THREE.MeshPhongMaterial({
-        vertexColors: true, transparent: true, opacity: 0.55,
-        shininess: 110, specular: new THREE.Color(0x6f8ea8),
+      // 돌기(윗면) / 이음선(측면) — 둘 다 PBR 이라 lookdev 의 PMREM 반사를 받는다
+      studs: L.Merge.brickMaterial('stud'),
+      sides: L.Merge.brickMaterial('tile'),
+      // 도로는 매트. 광택 재질을 그대로 쓰면 넓은 지면이 환경광을 받아 하얗게 날아간다.
+      ground: L.Merge.brickMaterial('tile', {
+        roughness: 0.82, clearcoat: 0.04, clearcoatRoughness: 0.7,
+        envMapIntensity: 0.18, bumpScale: 0.06,
+      }),
+      glass: new THREE.MeshPhysicalMaterial({
+        vertexColors: true, transparent: true, opacity: 0.42,
+        metalness: 0, roughness: 0.08,
+        clearcoat: 1, clearcoatRoughness: 0.05,
+        envMapIntensity: 0.95, depthWrite: false,
       }),
     };
   }
@@ -349,7 +432,7 @@
       scene.remove(env.sky); scene.remove(env.sea);
       env.sky.geometry.dispose(); env.sky.material.dispose(); env.tex.dispose();
       env.sea.geometry.dispose(); env.sea.material.dispose();
-      MATS.solid.dispose(); MATS.glass.dispose();
+      MATS.studs.dispose(); MATS.sides.dispose(); MATS.ground.dispose(); MATS.glass.dispose();
       scene.fog = null;
     }
 
