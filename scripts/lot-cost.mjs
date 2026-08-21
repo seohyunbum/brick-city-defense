@@ -5,6 +5,15 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const sandbox = { console, Math, Date, JSON, Object, Array, Float32Array, Uint16Array, Uint32Array };
 sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
 const load = (r) => vm.runInContext(fs.readFileSync(path.join(ROOT, r), 'utf8'), sandbox, { filename: r });
+// 캔버스 스텁 — 이 하네스는 지오메트리만 재므로 텍스처는 실제로 굽지 않는다.
+// (bricks.js 의 studCanvas/tileCanvas 가 2D 컨텍스트를 요구한다)
+const g2d = () => ({
+  fillStyle: '', strokeStyle: '', lineWidth: 0,
+  fillRect() {}, strokeRect() {}, beginPath() {}, arc() {}, fill() {}, stroke() {},
+  createRadialGradient: () => ({ addColorStop() {} }),
+  createLinearGradient: () => ({ addColorStop() {} }),
+});
+sandbox.document = { createElement: () => ({ width: 0, height: 0, getContext: g2d }) };
 load('vendor/three.min.js');
 vm.runInContext('window.LEGO = window.LEGO || {};', sandbox);
 for (const f of ['src/rounded-box.js','src/bricks.js','src/rng.js','src/geo-merge.js','src/world.js','src/districts.js']) load(f);
@@ -14,9 +23,9 @@ const rows = [];
 for (const type of L.Districts.TYPES) {
   let tot = 0, n = 12;
   for (let i = 0; i < n; i++) {
-    const ctx = { solid: L.Merge.builder(), glass: L.Merge.builder(), colliders: [], rand: L.RNG.mulberry32(1000 + i) };
+    const ctx = { solid: { studs: L.Merge.builder(), sides: L.Merge.builder(), ground: L.Merge.builder() }, glass: L.Merge.builder(), colliders: [], rand: L.RNG.mulberry32(1000 + i) };
     L.Districts.fillLot(ctx, type, 0, 0, 38, 0, 0, 1);
-    tot += ctx.solid.triCount + ctx.glass.triCount;
+    tot += ctx.solid.studs.triCount + ctx.solid.sides.triCount + ctx.solid.ground.triCount + ctx.glass.triCount;
   }
   rows.push({ type, tri: Math.round(tot / n) });
 }

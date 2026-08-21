@@ -413,4 +413,5 @@ window.LEGO = window.LEGO || {};
   L.faceTexture = faceTexture;
   L.signPanel = signPanel;
   L.surfaceMaterials = surfaceMaterials;
+  L.surfaceTextures = surfaceTextures;   // 병합 메시(geo-merge)가 원본 텍스처를 직접 쓴다
 })(window.LEGO);
