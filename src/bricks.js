@@ -119,6 +119,51 @@ window.LEGO = window.LEGO || {};
     return cv;
   }
 
+  // 건물 외벽 1베이(창 하나 몫). 창을 지오메트리로 만들면 삼각형이 폭증하므로 무늬로 굽는다.
+  // 정점 색과 곱해지므로 배경은 흰색으로 두고, 창만 어둡게 눌러 어떤 벽 색에도 얹힌다.
+  function facadeCanvas(kind) {
+    const S = 128, cv = canvas(S), g = cv.getContext('2d');
+    const bump = kind === 'bump';
+    g.fillStyle = bump ? '#b4b4b4' : '#ffffff';
+    g.fillRect(0, 0, S, S);
+
+    // 층 경계 + 베이 경계 (브릭 이음선)
+    g.strokeStyle = bump ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.13)';
+    g.lineWidth = 3;
+    g.strokeRect(0, 0, S, S);
+
+    // 창틀 — 벽보다 살짝 튀어나온 테두리
+    const x0 = S * 0.18, y0 = S * 0.20, w = S * 0.64, h = S * 0.50;
+    g.fillStyle = bump ? '#e8e8e8' : 'rgba(255,255,255,0.92)';
+    g.fillRect(x0 - 5, y0 - 5, w + 10, h + 10);
+
+    // 유리면 — 어둡게 눌러 어떤 벽 색에서도 창으로 읽히게
+    if (bump) {
+      g.fillStyle = '#5a5a5a';                     // 안쪽으로 들어간 면
+      g.fillRect(x0, y0, w, h);
+    } else {
+      const gg = g.createLinearGradient(x0, y0, x0 + w, y0 + h);
+      gg.addColorStop(0.00, '#5d7d93');
+      gg.addColorStop(0.45, '#89aec4');
+      gg.addColorStop(0.55, '#6d8ea6');
+      gg.addColorStop(1.00, '#415b70');
+      g.fillStyle = gg;
+      g.fillRect(x0, y0, w, h);
+      // 창살
+      g.strokeStyle = 'rgba(255,255,255,0.85)';
+      g.lineWidth = 4;
+      g.beginPath();
+      g.moveTo(x0 + w / 2, y0); g.lineTo(x0 + w / 2, y0 + h);
+      g.moveTo(x0, y0 + h / 2); g.lineTo(x0 + w, y0 + h / 2);
+      g.stroke();
+    }
+
+    // 창 아래 턱
+    g.fillStyle = bump ? '#f2f2f2' : 'rgba(0,0,0,0.10)';
+    g.fillRect(x0 - 7, y0 + h + 5, w + 14, S * 0.05);
+    return cv;
+  }
+
   function sharedTexture(key, maker, srgb) {
     if (!texCache.has(key)) texCache.set(key, finishTexture(maker(), 1, 1, srgb));
     return texCache.get(key);
@@ -126,9 +171,14 @@ window.LEGO = window.LEGO || {};
 
   // 판 크기에 맞춰 repeat 를 바꿔야 하므로 텍스처는 clone 해서 쓴다.
   function surfaceTextures(kind, repeatX, repeatY) {
-    const base = kind === 'tile'
-      ? { map: sharedTexture('tile-map', () => tileCanvas('map'), true), bump: sharedTexture('tile-bump', () => tileCanvas('bump')) }
-      : { map: sharedTexture('stud-map', () => studCanvas('map'), true), bump: sharedTexture('stud-bump', () => studCanvas('bump')) };
+    let base;
+    if (kind === 'tile') {
+      base = { map: sharedTexture('tile-map', () => tileCanvas('map'), true), bump: sharedTexture('tile-bump', () => tileCanvas('bump')) };
+    } else if (kind === 'facade') {
+      base = { map: sharedTexture('facade-map', () => facadeCanvas('map'), true), bump: sharedTexture('facade-bump', () => facadeCanvas('bump')) };
+    } else {
+      base = { map: sharedTexture('stud-map', () => studCanvas('map'), true), bump: sharedTexture('stud-bump', () => studCanvas('bump')) };
+    }
     const map = base.map.clone();
     const bump = base.bump.clone();
     map.needsUpdate = bump.needsUpdate = true;

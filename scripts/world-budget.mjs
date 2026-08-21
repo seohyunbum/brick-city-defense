@@ -31,6 +31,8 @@ const load = (rel) => vm.runInContext(fs.readFileSync(path.join(ROOT, rel), 'utf
 const g2d = () => ({
   fillStyle: '', strokeStyle: '', lineWidth: 0,
   fillRect() {}, strokeRect() {}, beginPath() {}, arc() {}, fill() {}, stroke() {},
+  moveTo() {}, lineTo() {}, closePath() {}, save() {}, restore() {}, clip() {},
+  rect() {}, translate() {}, rotate() {}, scale() {}, fillText() {}, measureText: () => ({ width: 0 }),
   createRadialGradient: () => ({ addColorStop() {} }),
   createLinearGradient: () => ({ addColorStop() {} }),
 });
