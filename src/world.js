@@ -74,6 +74,35 @@
     }
   }
 
+  const BAY = 4.2;      // 창 하나 몫의 가로 폭
+  const FLOOR = 3.2;    // 한 층 높이
+
+  /**
+   * 건물 외벽 — 창문 무늬 텍스처를 입힌다.
+   *
+   * 창을 지오메트리로 만들면 층수 x 베이수 만큼 박스가 늘어 삼각형이 폭증한다.
+   * 대신 한 베이(창 하나)를 텍스처 한 칸으로 굽고 UV 를 베이/층 단위로 끊는다.
+   * 삼각형 추가 비용 0 으로 파사드가 생긴다.
+   */
+  function pushWall(b, cx, cy, cz, w, h, d, color, ry) {
+    _p.set(cx, cy, cz);
+    _s.set(w, h, d);
+    _e.set(0, ry || 0, 0);
+    _q.setFromEuler(_e);
+    _m.compose(_p, _q, _s);
+    const uX = [Math.max(1, Math.round(d / BAY)), Math.max(1, Math.round(h / FLOOR))];
+    const uY = [w / STUDU, d / STUDU];
+    const uZ = [Math.max(1, Math.round(w / BAY)), Math.max(1, Math.round(h / FLOOR))];
+    const faceUV = [uX, uX, uY, uY, uZ, uZ];
+    const box = geos().box;
+    if (b.facade) {
+      b.studs.add(box, _m, color, { faceUV, faces: [2] });                 // 옥상은 돌기
+      b.facade.add(box, _m, color, { faceUV, faces: [0, 1, 3, 4, 5] });    // 벽은 창문
+    } else {
+      b.add(box, _m, color, { faceUV });
+    }
+  }
+
   /** 원통·원뿔·구는 돌기를 올리지 않는다 — 이음선 채널로만 간다. */
   function pushRound(b, geo, cx, cy, cz, sx, sy, sz, color, uv) {
     _p.set(cx, cy, cz); _s.set(sx, sy, sz); _q.identity();
@@ -102,7 +131,7 @@
   }
 
   L.WORLD_CONST = { CHUNK, HALF_CHUNKS, WORLD_HALF, LOT, ROAD_HALF, CURB_Y, VIEW_RADIUS };
-  L.WorldDraw = { pushBox, pushCyl, pushCone, pushSph, collide, geos };
+  L.WorldDraw = { pushBox, pushWall, pushCyl, pushCone, pushSph, collide, geos };
 
   // ------------------------------------------------------------- 청크 포장
   /** 아스팔트 바닥 + 부지 인도. 도로는 64 배수 좌표에 깔린다. */
@@ -177,8 +206,9 @@
     const studs = L.Merge.builder();
     const sides = L.Merge.builder();
     const ground = L.Merge.builder();
+    const facade = L.Merge.builder();
     const ctx = {
-      solid: { studs, sides, ground },
+      solid: { studs, sides, ground, facade },
       glass: L.Merge.builder(),
       colliders: [],
       rand,
@@ -214,6 +244,7 @@
     attach(studs.build(), M.studs, false);
     attach(sides.build(), M.sides, true);
     attach(ground.build(), M.ground, false);
+    attach(facade.build(), M.facade, true);
     attach(ctx.glass.build(), M.glass, false);
     group.matrixAutoUpdate = false;
     group.updateMatrix();
@@ -235,6 +266,8 @@
       // 돌기(윗면) / 이음선(측면) — 둘 다 PBR 이라 lookdev 의 PMREM 반사를 받는다
       studs: L.Merge.brickMaterial('stud'),
       sides: L.Merge.brickMaterial('tile'),
+      // 건물 외벽 — 창문 무늬. 삼각형을 늘리지 않고 파사드를 만든다.
+      facade: L.Merge.brickMaterial('facade', { bumpScale: 0.22, roughness: 0.34 }),
       // 도로는 매트. 광택 재질을 그대로 쓰면 넓은 지면이 환경광을 받아 하얗게 날아간다.
       ground: L.Merge.brickMaterial('tile', {
         roughness: 0.82, clearcoat: 0.04, clearcoatRoughness: 0.7,
@@ -432,7 +465,8 @@
       scene.remove(env.sky); scene.remove(env.sea);
       env.sky.geometry.dispose(); env.sky.material.dispose(); env.tex.dispose();
       env.sea.geometry.dispose(); env.sea.material.dispose();
-      MATS.studs.dispose(); MATS.sides.dispose(); MATS.ground.dispose(); MATS.glass.dispose();
+      MATS.studs.dispose(); MATS.sides.dispose(); MATS.ground.dispose();
+      MATS.facade.dispose(); MATS.glass.dispose();
       scene.fog = null;
     }
 

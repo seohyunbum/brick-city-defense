@@ -167,10 +167,8 @@
     // 층마다 슬래브를 쌓으면 팬케이크처럼 처마가 튀어나온다.
     // 몸통은 한 덩어리로 세우고 창만 띠로 두른다 — 보기도 낫고 삼각형도 절반이다.
     W.pushBox(b, cx, 0.55 + 0.4, cz, w + 2.4, 0.8, d + 2.4, C.darkGray);   // 기단
-    W.pushBox(b, cx, 0.95 + H / 2, cz, w, H, d, col);                      // 몸통
-    for (let i = 0; i < floors; i++) {
-      W.pushBox(g, cx, 0.95 + i * fh + fh * 0.62, cz, w + 0.3, fh * 0.44, d + 0.3, C.glass);
-    }
+    // 창은 파사드 텍스처가 그린다 — 층마다 유리 박스를 두르면 삼각형만 먹고 덜 예쁘다
+    W.pushWall(b, cx, 0.95 + H / 2, cz, w, H, d, col);
     // 파라펫·옥탑은 액센트 색 — 스카이라인에 색을 넣는다
     const acc = R.pick(rand, ACCENTS);
     W.pushBox(b, cx, 0.95 + H + 0.35, cz, w + 0.8, 0.7, d + 0.8, acc);        // 파라펫
@@ -188,9 +186,10 @@
     const w = size * 0.7, d = size * 0.46, fh = 3.4;
     const col = R.pick(rand, HOUSE_COLORS);
     const H = floors * fh;
-    W.pushBox(b, cx, 0.95 + H / 2, cz, w, H, d, col);                      // 몸통
-    for (let i = 0; i < floors; i++) {                                     // 앞면 창
-      W.pushBox(g, cx, 0.95 + i * fh + fh * 0.6, cz + d * 0.5, w * 0.86, fh * 0.42, 0.3, C.glass);
+    W.pushWall(b, cx, 0.95 + H / 2, cz, w, H, d, col);                     // 몸통(창 포함)
+    for (let i = 1; i < floors; i++) {                                     // 발코니 난간
+      W.pushBox(b, cx, 0.95 + i * fh + 0.5, cz + d * 0.5 + 0.7, w * 0.92, 0.9, 1.4,
+        i % 2 ? C.white : C.lightGray);
     }
     W.pushBox(b, cx, 0.95 + H + 0.35, cz, w + 1.2, 0.7, d + 1.2, C.darkRed);  // 처마
     W.collide(ctx, cx, cz, w / 2 + 0.4, d / 2 + 0.4);
@@ -203,8 +202,8 @@
       const hx = cx + (i === 0 ? -size / 4 : size / 4);
       const col = R.pick(rand, HOUSE_COLORS);
       const w = size * 0.36, d = size * 0.4;
-      W.pushBox(b, hx, 0.55 + 2.2, cz, w, 4.4, d, col);
-      W.pushBox(g, hx, 0.55 + 2.6, cz + d / 2, w * 0.5, 1.6, 0.28, C.glass);
+      W.pushWall(b, hx, 0.55 + 2.2, cz, w, 4.4, d, col);
+      W.pushBox(b, hx, 0.55 + 1.3, cz + d / 2 + 0.15, 1.6, 2.6, 0.3, C.brown);   // 현관문
       W.pushCone(b, hx, 0.55 + 5.6, cz, w * 0.82, 2.6, R.pick(rand, ROOF_COLORS));  // 지붕
       W.pushBox(b, hx + w * 0.3, 0.55 + 6.4, cz, 0.8, 1.6, 0.8, C.lightGray); // 굴뚝
       W.collide(ctx, hx, cz, w / 2, d / 2);
@@ -280,9 +279,9 @@
   function civic(ctx, cx, cz, size, rand, wall, band, signColor) {
     const b = ctx.solid, g = ctx.glass;
     const w = size * 0.78, d = size * 0.55;
-    W.pushBox(b, cx, 0.55 + 3.0, cz, w, 6.0, d, wall);
+    W.pushWall(b, cx, 0.55 + 3.0, cz, w, 6.0, d, wall);
     W.pushBox(b, cx, 0.55 + 4.6, cz, w + 0.5, 1.2, d + 0.5, band);          // 띠
-    W.pushBox(g, cx, 0.55 + 2.4, cz + d / 2, w * 0.7, 2.4, 0.3, C.glass);
+    W.pushBox(b, cx, 0.55 + 1.4, cz + d / 2 + 0.15, 2.6, 2.8, 0.3, C.brown); // 출입문
     W.pushBox(b, cx, 0.55 + 6.6, cz, w * 0.35, 1.2, d * 0.35, signColor);   // 표지 블록
     W.collide(ctx, cx, cz, w / 2 + 0.4, d / 2 + 0.4);
     lamp(ctx, cx - w / 2 - 2, cz + d / 2 + 2);
