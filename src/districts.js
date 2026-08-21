@@ -95,15 +95,15 @@
     const w = R.range(rand, size * 0.5, size * 0.72);
     const d = R.range(rand, size * 0.5, size * 0.72);
     const col = R.pick(rand, TOWER_COLORS);
-    const fh = 3.2;
+    const fh = 3.2, H = floors * fh;
+    // 층마다 슬래브를 쌓으면 팬케이크처럼 처마가 튀어나온다.
+    // 몸통은 한 덩어리로 세우고 창만 띠로 두른다 — 보기도 낫고 삼각형도 절반이다.
     W.pushBox(b, cx, 0.55 + 0.4, cz, w + 2.4, 0.8, d + 2.4, C.darkGray);   // 기단
+    W.pushBox(b, cx, 0.95 + H / 2, cz, w, H, d, col);                      // 몸통
     for (let i = 0; i < floors; i++) {
-      const y = 0.95 + i * fh + fh / 2;
-      const shrink = 1 - (i / floors) * R.range(rand, 0, 0.28);
-      W.pushBox(b, cx, y, cz, w * shrink, fh * 0.42, d * shrink, col);
-      W.pushBox(g, cx, y + fh * 0.32, cz, w * shrink * 0.97, fh * 0.5, d * shrink * 0.97, C.glass);
+      W.pushBox(g, cx, 0.95 + i * fh + fh * 0.62, cz, w + 0.3, fh * 0.44, d + 0.3, C.glass);
     }
-    W.pushBox(b, cx, 0.95 + floors * fh + 0.5, cz, w * 0.5, 1.0, d * 0.5, C.lightGray);
+    W.pushBox(b, cx, 0.95 + H + 0.5, cz, w * 0.5, 1.0, d * 0.5, C.lightGray);  // 옥탑
     W.collide(ctx, cx, cz, w / 2 + 0.6, d / 2 + 0.6);
     if (R.chance(rand, 0.5)) lamp(ctx, cx + size / 2 - 2, cz - size / 2 + 2);
   }
@@ -113,12 +113,12 @@
     const floors = R.irange(rand, 3, 6);
     const w = size * 0.7, d = size * 0.46, fh = 3.4;
     const col = R.pick(rand, HOUSE_COLORS);
-    for (let i = 0; i < floors; i++) {
-      const y = 0.95 + i * fh + fh / 2;
-      W.pushBox(b, cx, y, cz, w, fh * 0.5, d, col);
-      W.pushBox(g, cx, y + fh * 0.3, cz + d * 0.5, w * 0.86, fh * 0.42, 0.3, C.glass);
+    const H = floors * fh;
+    W.pushBox(b, cx, 0.95 + H / 2, cz, w, H, d, col);                      // 몸통
+    for (let i = 0; i < floors; i++) {                                     // 앞면 창
+      W.pushBox(g, cx, 0.95 + i * fh + fh * 0.6, cz + d * 0.5, w * 0.86, fh * 0.42, 0.3, C.glass);
     }
-    W.pushBox(b, cx, 0.95 + floors * fh + 0.35, cz, w + 1.2, 0.7, d + 1.2, C.darkRed);  // 처마
+    W.pushBox(b, cx, 0.95 + H + 0.35, cz, w + 1.2, 0.7, d + 1.2, C.darkRed);  // 처마
     W.collide(ctx, cx, cz, w / 2 + 0.4, d / 2 + 0.4);
     tree(ctx, cx - size / 2 + 3, cz + size / 2 - 3, 0.8);
   }
@@ -315,10 +315,22 @@
     police, fire, school, construction, garage, farm, harbor, beach,
   };
 
+  // 화면에 그대로 뜨는 구역 이름 — 아이가 '지금 어디'인지 항상 알 수 있어야 한다(SPEC 10장)
+  const LABELS = {
+    downtown: '도심', apartment: '아파트 단지', house: '주택가', park: '공원',
+    market: '시장', plaza: '중앙 광장', playground: '놀이터', police: '경찰서',
+    fire: '소방서', school: '학교', construction: '공사장', garage: '자동차 정비소',
+    farm: '농장', harbor: '항구', beach: '바닷가',
+  };
+
+  function labelAt(seed, lotX, lotZ) {
+    return LABELS[typeAt(seed, lotX, lotZ)] || '브릭 시티';
+  }
+
   function fillLot(ctx, type, cx, cz, size, lotX, lotZ, seed) {
     const fn = GEN[type] || park;
     fn(ctx, cx, cz, size, ctx.rand);
   }
 
-  L.Districts = { typeAt, fillLot, LANDMARKS, TYPES: Object.keys(GEN) };
+  L.Districts = { typeAt, labelAt, fillLot, LANDMARKS, LABELS, TYPES: Object.keys(GEN) };
 })(window.LEGO);

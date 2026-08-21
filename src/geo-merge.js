@@ -39,7 +39,11 @@
     if (!pos) return this;
     _c.set(color);
     this.parts.push({
-      geo, mat: matrix, r: _c.r, g: _c.g, b: _c.b, own: geo !== geometry,
+      geo,
+      // 반드시 복사한다. 호출자(world.js pushBox 등)는 공유 스크래치 행렬을 재사용하므로
+      // 참조로 담으면 청크의 모든 조각이 '마지막 행렬' 하나로 변환돼 한 점에 뭉친다.
+      mat: matrix ? matrix.clone() : null,
+      r: _c.r, g: _c.g, b: _c.b, own: geo !== geometry,
       su: su || 1, sv: sv === undefined ? (su || 1) : sv,
     });
     this.vertexCount += pos.count;
