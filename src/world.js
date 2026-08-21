@@ -314,6 +314,20 @@
       if (pos.z < -lim) pos.z = -lim; else if (pos.z > lim) pos.z = lim;
     }
 
+    /**
+     * 좌표가 속한 부지의 구역 이름. 부지가 바뀔 때만 다시 계산한다.
+     * game.js 는 지휘자라 이런 월드 조회를 들고 있지 않는다(CLAUDE.md 2장).
+     */
+    let _lotX = null, _lotZ = null, _label = '브릭 시티';
+    function districtLabel(x, z) {
+      const lx = Math.floor(x / LOT), lz = Math.floor(z / LOT);
+      if (lx !== _lotX || lz !== _lotZ) {
+        _lotX = lx; _lotZ = lz;
+        _label = L.Districts.labelAt(seed, lx, lz);
+      }
+      return _label;
+    }
+
     function stats() {
       let meshes = 0, tris = 0;
       chunks.forEach((c) => {
@@ -379,7 +393,7 @@
     }
 
     return {
-      seed, root, update, prime, collidersNear, clamp, stats, dispose, spawnPoint,
+      seed, root, update, prime, collidersNear, clamp, stats, dispose, spawnPoint, districtLabel,
       // city.js 호환 표면 — enemies.js·objectives.js 가 기대하는 모양을 유지한다.
       // npcs 는 시민 스트리밍이 붙기 전까지 비어 있다(빈 배열에서 양쪽 모두 안전).
       npcs: [],
