@@ -483,18 +483,6 @@
     return best;
   };
 
-  /** 현재 서 있는 부지의 구역 이름. 값이 바뀔 때만 새로 계산한다. */
-  Game.prototype.districtLabel = function () {
-    const LOTSZ = L.WORLD_CONST.LOT;
-    const lx = Math.floor(this.player.pos.x / LOTSZ);
-    const lz = Math.floor(this.player.pos.z / LOTSZ);
-    if (lx !== this._lotX || lz !== this._lotZ) {
-      this._lotX = lx; this._lotZ = lz;
-      this._districtLabel = L.Districts.labelAt(this.world.seed, lx, lz);
-    }
-    return this._districtLabel;
-  };
-
   // ------------------------------------------------------------------ 루프
   Game.prototype._loop = function (nowMs) {
     requestAnimationFrame(this._loop);
@@ -550,7 +538,7 @@
         citizensLost: this.objectives.waveLost,
         citizensTotal: this.city.npcs.length,
         yaw: this.player.yaw,
-        district: this.districtLabel(),
+        district: this.world.districtLabel(this.player.pos.x, this.player.pos.z),
       });
     } else {
       // 멈춘 동안에도 도시는 살아있게(시작 화면 배경)
