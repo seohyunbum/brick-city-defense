@@ -105,7 +105,7 @@ for (let i = 0; i < skills.length; i++) {
   await page.screenshot({ path: resolve(outDir, `05-skill-${skills[i]}.png`) });
 }
 
-// 실제 조작으로 잠깐 플레이: 이동 · 공격 · 시전 · 웨이브 진행
+// 실제 조작으로 잠깐 플레이: 이동 · 공격 · 시전
 // (앞 단계에서 몬스터에 맞아 죽었을 수 있으니 깨끗한 상태로 다시 시작한다)
 await page.evaluate(() => {
   const g = window.LEGO_GAME;
@@ -115,6 +115,12 @@ await page.evaluate(() => {
   g.input.attackHeld = false;
 });
 await page.waitForTimeout(200);
+// 이동 판정 기준점 — 소프트웨어 렌더는 프레임이 느려 '이동 거리'가 하드웨어와 다르다.
+// 그래서 절대 거리가 아니라 '앞으로 간 성분'으로 판정한다.
+const pre = await page.evaluate(() => {
+  const g = window.LEGO_GAME;
+  return { x: g.player.pos.x, z: g.player.pos.z, yaw: g.player.yaw };
+});
 await page.keyboard.down('KeyW');
 await page.mouse.move(700, 450);
 await page.mouse.down();
@@ -126,101 +132,117 @@ await page.keyboard.press('Digit6');
 await page.keyboard.down('Space');
 await page.waitForTimeout(700);
 await page.keyboard.up('Space');
-const play = await page.evaluate(() => {
+const play = await page.evaluate((pre) => {
   const g = window.LEGO_GAME;
+  const dx = g.player.pos.x - pre.x, dz = g.player.pos.z - pre.z;
+  // yaw 규약: 앞 = (-sin(yaw), -cos(yaw))  (game.js updatePlayer)
+  const fx = -Math.sin(pre.yaw), fz = -Math.cos(pre.yaw);
+  const r1 = (v) => Math.round(v * 10) / 10;
   return {
-    state: g.state, z: Math.round(g.player.pos.z), kills: g.player.kills,
-    score: g.player.score, alive: g.enemies.aliveCount(), weapon: g.hands.currentWeapon().id,
-    skill: g.hands.currentSkill().id, mana: Math.round(g.player.mana),
+    state: g.state,
+    moved: r1(Math.hypot(dx, dz)),
+    forward: r1(dx * fx + dz * fz),
+    weapon: g.hands.currentWeapon().id, skill: g.hands.currentSkill().id,
+    mana: Math.round(g.player.mana),
   };
-});
-if (play.z >= 30) throw new Error('W 키로 앞으로 나아가지 못했다: z=' + play.z);
+}, pre);
+if (play.forward < 2) {
+  throw new Error('W 키로 앞으로 나아가지 못했다: 전진성분=' + play.forward + ' 총이동=' + play.moved);
+}
 if (play.weapon !== 'sword') throw new Error('1번 키로 검을 들지 못했다: ' + play.weapon);
 if (play.skill !== 'fireball') throw new Error('6번 키로 파이어볼을 들지 못했다: ' + play.skill);
 console.log('플레이 확인:', JSON.stringify(play));
 
-// 웨이브 클리어 → 지원 선택 → 다음 웨이브
-const supportFlow = await page.evaluate(async () => {
-  const g = window.LEGO_GAME;
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const before = g.wave;
-  g.objectives.damageCity(20, 'smoke');
-  g.enemies.queue.length = 0;
-  g.enemies.clear();
-  g.enemies.waveActive = true;
-  const t0 = Date.now();
-  while (g.state !== 'support' && Date.now() - t0 < 6000) await wait(100);
-  return { before, advanced: g.wave, support: g.state, beforeRepair: g.objectives.integrity };
-});
-if (supportFlow.advanced !== supportFlow.before + 1 || supportFlow.support !== 'support') {
-  throw new Error('웨이브/지원 선택 화면 전환 실패: ' + JSON.stringify(supportFlow));
-}
-await page.screenshot({ path: resolve(outDir, '08-support-choice.png') });
-await page.click('[data-support="repair"]');
-const waveFlow = await page.evaluate(async () => {
-  const g = window.LEGO_GAME;
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const chosen = g.progression.choiceCount === 1;
-  const afterRepair = g.objectives.integrity;
-  g.waveBreak = 0.05;
-  const t0 = Date.now();
-  while (!g.enemies.waveActive && Date.now() - t0 < 6000) await wait(100);
-  return { chosen, afterRepair, active: g.enemies.waveActive, queued: g.enemies.queue.length };
-});
-if (!waveFlow.chosen || waveFlow.afterRepair <= supportFlow.beforeRepair || !waveFlow.active) {
-  throw new Error('도시 수리/다음 웨이브 흐름 실패: ' + JSON.stringify({ supportFlow, waveFlow }));
-}
-console.log('웨이브 진행 확인:', JSON.stringify({ supportFlow, waveFlow }));
+// ---------------------------------------------------------------- 오픈월드 계약
+// 아래 4개는 GAME_DESIGN_SPEC 2.0 의 판정 기준이다.
+// 1.x 의 웨이브/지원선택/게임오버 검증은 계약이 뒤집혀 있었으므로 제거했다.
 
-// 골렘=거점, 배트=시민, 도시 무결도 0=패배가 실제 규칙인지 확인
-const defense = await page.evaluate(() => {
+// (1) 자유 이동 — 스폰에서 멀리 갈 수 있고, 청크는 유지 반경 안으로 제한된다
+const roam = await page.evaluate(async () => {
   const g = window.LEGO_GAME;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   g.start();
-  g.enemies.clear();
-  const initial = g.objectives.integrity;
-  const golem = g.enemies.spawn('golem');
-  const outpost = g.objectives.targetFor(golem, g.player.pos);
-  golem.pos.copy(outpost.pos);
-  golem.group.position.copy(golem.pos);
-  golem.attackTimer = 0;
-  g.enemies.update(0.016, g.player.pos, g.camera, g.objectives);
-  const afterOutpost = g.objectives.integrity;
-
-  const bat = g.enemies.spawn('bat');
-  const citizen = g.objectives.targetFor(bat, g.player.pos);
-  bat.pos.copy(citizen.pos);
-  bat.group.position.copy(bat.pos);
-  bat.attackTimer = 0;
-  g.enemies.update(0.016, g.player.pos, g.camera, g.objectives);
-  bat.attackTimer = 0;
-  g.enemies.update(0.016, g.player.pos, g.camera, g.objectives);
-  const afterCitizen = g.objectives.integrity;
-  const lost = g.objectives.lost;
-  const targets = { golem: golem.targetKind, bat: bat.targetKind };
-  g.objectives.damageCity(999, 'smoke');
-  return { initial, afterOutpost, afterCitizen, lost, targets,
-    state: g.state, reason: g.failureReason };
+  const sp = g.world.spawnPoint();
+  g.player.pos.set(sp.x + 520, g.player.pos.y, sp.z + 520);
+  g.world.prime(g.player.pos.x, g.player.pos.z);
+  await wait(150);
+  const st = g.world.stats();
+  const b = g.world.bounds;
+  return {
+    far: Math.round(Math.hypot(g.player.pos.x - sp.x, g.player.pos.z - sp.z)),
+    chunks: st.chunks, meshes: st.meshes,
+    worldSize: b.maxX - b.minX, state: g.state,
+  };
 });
-if (defense.targets.golem !== 'outpost' || defense.targets.bat !== 'citizen' ||
-    defense.afterOutpost >= defense.initial || defense.afterCitizen >= defense.afterOutpost ||
-    defense.lost !== 1 || defense.state !== 'over' || defense.reason !== 'city') {
-  throw new Error('도시·시민 방어 목표 실패: ' + JSON.stringify(defense));
+if (roam.state !== 'playing' || roam.far < 500) {
+  throw new Error('자유 이동 실패(월드를 가로지르지 못했다): ' + JSON.stringify(roam));
 }
-console.log('도시·시민 방어 확인:', JSON.stringify(defense));
+if (roam.worldSize < 2000) {
+  throw new Error('월드가 규격(2048)보다 작다: ' + JSON.stringify(roam));
+}
+if (roam.chunks < 20 || roam.chunks > 49) {
+  throw new Error('청크 스트리밍이 유지 반경을 벗어났다: ' + JSON.stringify(roam));
+}
+console.log('자유 이동·스트리밍 확인:', JSON.stringify(roam));
+await page.screenshot({ path: resolve(outDir, '08-openworld-roam.png') });
 
-// 게임 오버 → 다시 시작
-const over = await page.evaluate(() => {
+// (2) 게임오버 없음 — 쓰러져도 진행이 끊기지 않는다 (SPEC 9장)
+const noGameOver = await page.evaluate(() => {
   const g = window.LEGO_GAME;
   g.start();
   g.hurtPlayer(99);
-  const s1 = g.state;
-  g.start();
-  return { over: s1, restarted: g.state, hearts: g.player.hearts, wave: g.wave };
+  return { state: g.state, hearts: g.player.hearts };
 });
-if (over.over !== 'over' || over.restarted !== 'playing' || over.hearts !== 5 || over.wave !== 1) {
-  throw new Error('게임오버/재시작 흐름이 깨졌다: ' + JSON.stringify(over));
+if (noGameOver.state !== 'playing' || noGameOver.hearts <= 0) {
+  throw new Error('게임오버가 진행을 차단했다(오픈월드 위반): ' + JSON.stringify(noGameOver));
 }
-console.log('게임오버·재시작 확인:', JSON.stringify(over));
+console.log('게임오버 없음 확인:', JSON.stringify(noGameOver));
+
+// (3) 전투는 선택 — 시작 직후 자동으로 몬스터가 나오지 않는다
+const peaceful = await page.evaluate(async () => {
+  const g = window.LEGO_GAME;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  g.start();
+  await wait(1600);
+  return { alive: g.enemies.aliveCount(), waveActive: g.enemies.waveActive, state: g.state };
+});
+if (peaceful.alive !== 0 || peaceful.waveActive) {
+  throw new Error('시작하자마자 강제 전투가 걸렸다(오픈월드 위반): ' + JSON.stringify(peaceful));
+}
+console.log('전투 선택제 확인:', JSON.stringify(peaceful));
+
+// (4) 월드 어느 지점에서도 렌더 예산 — 평균이 아니라 최악값으로 판정한다
+const worldBudget = await page.evaluate(async () => {
+  const g = window.LEGO_GAME;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const pts = [[45, 32], [300, -260], [-520, 140], [-512, -512], [760, 0], [96, 512]];
+  let worstCalls = 0, worstTris = 0, worstAt = null;
+  for (const pt of pts) {
+    g.player.pos.x = pt[0]; g.player.pos.z = pt[1];
+    g.world.prime(pt[0], pt[1]);
+    g.camera.position.set(pt[0], g.player.pos.y, pt[1]);
+    await wait(40);
+    const r = g.renderer;
+    r.info.autoReset = false;
+    r.info.reset();
+    g.post.renderWorld(g.scene);
+    r.clearDepth();
+    r.render(g.hands.scene, g.hands.camera);
+    const calls = r.info.render.calls, tris = r.info.render.triangles;
+    r.info.autoReset = true;
+    if (calls > worstCalls) { worstCalls = calls; worstAt = pt; }
+    if (tris > worstTris) worstTris = tris;
+  }
+  return { worstCalls, worstTris, worstAt, samples: pts.length };
+});
+if (worldBudget.worstCalls > 650 || worldBudget.worstTris > 125000) {
+  throw new Error('월드 렌더 예산 초과: ' + JSON.stringify(worldBudget));
+}
+console.log('월드 예산 확인(최악값):', JSON.stringify(worldBudget));
+
+// 스폰 지점으로 되돌려 이후 검사를 깨끗한 상태에서 이어간다
+await page.evaluate(() => { window.LEGO_GAME.start(); });
+await page.waitForTimeout(150);
 
 // 수집품 풀이 가득 차도 게임 보상이 사라지지 않고 즉시 지급돼야 한다.
 const pickupOverflow = await page.evaluate(() => {

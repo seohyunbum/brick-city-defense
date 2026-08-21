@@ -10,8 +10,8 @@
   function HUD() {
     this.dom = {
       hud: el('hud'),
-      wave: el('wave-value'),
-      left: el('left-value'),
+      compass: el('compass-value'),
+      district: el('district-value'),
       score: el('score-value'),
       combo: el('combo-value'),
       comboPanel: el('combo-panel'),
@@ -79,13 +79,32 @@
   };
 
   /** 매 프레임 갱신 (state = game 이 넘겨주는 값 묶음) */
+  const COMPASS = ['북', '북서', '서', '남서', '남', '남동', '동', '북동'];
+
+  /** yaw -> 방위. 규약: 앞 = (-sin(yaw), -cos(yaw)), -Z 를 북으로 본다. */
+  function compassOf(yaw) {
+    const TAU = Math.PI * 2;
+    let a = yaw % TAU;
+    if (a < 0) a += TAU;
+    return COMPASS[Math.round(a / (Math.PI / 4)) % 8];
+  }
+
   HUD.prototype.update = function (dt, s) {
-    this.dom.wave.textContent = s.wave;
-    this.dom.left.textContent = s.remaining;
+    // 오픈월드 HUD — 길을 잃지 않게 방향과 현재 구역을 항상 보여준다(SPEC 10장)
+    if (this.dom.compass) {
+      const c = compassOf(s.yaw || 0);
+      if (c !== this._lastCompass) { this._lastCompass = c; this.dom.compass.textContent = c; }
+    }
+    if (this.dom.district && s.district !== this._lastDistrict) {
+      this._lastDistrict = s.district;
+      this.dom.district.textContent = s.district || '브릭 시티';
+    }
     this.dom.score.textContent = s.score;
     this.dom.combo.textContent = s.combo > 1 ? ('x' + s.combo) : '0';
 
-    if (s.integrity !== this._lastIntegrity) {
+    // 도시 무결도·시민 대피 패널은 몬스터 이벤트 전용이라 오픈월드 기본 HUD 에서 뺐다.
+    // 이벤트가 붙으면 다시 살린다(SPEC 9장). 그때까지는 null 가드로 안전하게 지나간다.
+    if (this.dom.cityFill && s.integrity !== this._lastIntegrity) {
       this._lastIntegrity = s.integrity;
       const cityRatio = Math.max(0, Math.min(1, s.integrity / s.maxIntegrity));
       this.dom.cityFill.style.width = (cityRatio * 100).toFixed(1) + '%';
@@ -93,8 +112,10 @@
       this.dom.cityFill.classList.toggle('warning', cityRatio <= 0.5 && cityRatio > 0.25);
       this.dom.cityFill.classList.toggle('danger', cityRatio <= 0.25);
     }
-    this.dom.citizenValue.textContent = s.citizensSaved + ' / ' + s.citizensTotal +
-      (s.citizensLost ? (' · 실패 ' + s.citizensLost) : '');
+    if (this.dom.citizenValue) {
+      this.dom.citizenValue.textContent = s.citizensSaved + ' / ' + s.citizensTotal +
+        (s.citizensLost ? (' · 실패 ' + s.citizensLost) : '');
+    }
 
     // 하트
     if (s.hearts !== this._lastHearts) {
@@ -190,18 +211,21 @@
 
   HUD.prototype.cityHurt = function () {
     const panel = this.dom.cityPanel;
+    if (!panel) return;          // 오픈월드 기본 HUD 에는 무결도 패널이 없다
     panel.classList.add('hurt');
     setTimeout(() => panel.classList.remove('hurt'), 180);
   };
 
   HUD.prototype.screen = function (name) {
-    this.dom.startScreen.classList.toggle('hidden', name !== 'start');
-    this.dom.overScreen.classList.toggle('hidden', name !== 'over');
-    this.dom.pauseScreen.classList.toggle('hidden', name !== 'pause');
-    this.dom.supportScreen.classList.toggle('hidden', name !== 'support');
+    const set = (node, on) => { if (node) node.classList.toggle('hidden', !on); };
+    set(this.dom.startScreen, name === 'start');
+    set(this.dom.overScreen, name === 'over');
+    set(this.dom.pauseScreen, name === 'pause');
+    set(this.dom.supportScreen, name === 'support');
   };
 
   HUD.prototype.gameOver = function (s) {
+    if (!this.dom.overWave) return;   // 오픈월드에는 게임오버가 없다(SPEC 9장)
     this.dom.overWave.textContent = s.wave;
     this.dom.overScore.textContent = s.score;
     this.dom.overKills.textContent = s.kills;

@@ -180,15 +180,16 @@
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
 
+    // 반경은 카메라 far(game.js: 900) 안이어야 한다. 밖이면 통째로 클리핑돼 하늘이 검게 나온다.
     const sky = new THREE.Mesh(
-      new THREE.SphereGeometry(WORLD_HALF * 2.2, 24, 16),
+      new THREE.SphereGeometry(720, 24, 16),
       new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false })
     );
     sky.matrixAutoUpdate = false; sky.updateMatrix();
     scene.add(sky);
 
     const sea = new THREE.Mesh(
-      new THREE.PlaneGeometry(WORLD_HALF * 6, WORLD_HALF * 6),
+      new THREE.PlaneGeometry(1800, 1800),
       new THREE.MeshPhongMaterial({ color: 0x2f7fb5, shininess: 80, specular: 0x88bcd8 })
     );
     sea.rotation.x = -Math.PI / 2;
@@ -274,6 +275,10 @@
         });
       }
 
+      // 하늘·바다는 플레이어를 따라다닌다(유한 반경이라 고정하면 가장자리가 드러난다)
+      env.sky.position.set(px, 0, pz); env.sky.updateMatrix(); env.sky.updateMatrixWorld(true);
+      env.sea.position.set(px, -1.2, pz); env.sea.updateMatrix(); env.sea.updateMatrixWorld(true);
+
       // 첫 진입은 즉시 다 채우고(빈 화면 방지), 이후에는 프레임당 소량만
       drain(budget === undefined ? 2 : budget);
     }
@@ -334,13 +339,51 @@
       scene.fog = null;
     }
 
-    /** 시작 지점 — 도로 교차로가 아니라 인도 위 안전한 곳. */
+    /**
+     * 시작 지점 — 좌표를 손으로 고르지 않고 실제 콜라이더로 검증한다.
+     * 부지 중앙에는 건물·분수가 서므로 거기서 시작하면 충돌로 밀려난다.
+     * 중앙 광장 주변을 나선형으로 훑어 여유가 확보된 첫 지점을 쓴다.
+     */
+    let _spawn = null;
     function spawnPoint() {
-      return { x: LOT / 2, z: LOT / 2 };
+      if (_spawn) return _spawn;
+      const cx = LOT / 2, cz = LOT / 2;    // 중앙 광장 부지
+      const c = chunks.get(key(0, 0)) || buildChunk(seed, 0, 0);
+      const cols = c.colliders;
+      const NEED = 3.0;                    // 플레이어 반지름 2.0 + 여유
+      let best = { x: cx, z: cz, gap: -Infinity };
+      for (let ring = 0; ring <= 5 && best.gap < NEED; ring++) {
+        const r = ring * 4.5;
+        const steps = ring === 0 ? 1 : ring * 8;
+        for (let i = 0; i < steps; i++) {
+          const a = (i / steps) * Math.PI * 2;
+          const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+          let gap = Infinity;
+          for (let k = 0; k < cols.length; k++) {
+            const o = cols[k];
+            const dx = Math.abs(x - o.x) - o.hx;
+            const dz = Math.abs(z - o.z) - o.hz;
+            const d = Math.max(dx, dz);    // AABB 바깥 거리(음수면 내부)
+            if (d < gap) gap = d;
+          }
+          if (gap > best.gap) best = { x, z, gap };
+          if (gap >= NEED) break;
+        }
+      }
+      // 광장 중심을 등지고 바깥(열린 길)을 보게 한다.
+      // 중심을 바라보게 하면 처음 W 를 누르자마자 분수에 막힌다 — 아이 기준으로 나쁜 첫 경험.
+      // yaw 규약: 앞 = (-sin(yaw), -cos(yaw))  (game.js updatePlayer 참조)
+      const yaw = Math.atan2(-(best.x - cx), -(best.z - cz));
+      _spawn = { x: best.x, z: best.z, yaw, clearance: best.gap };
+      return _spawn;
     }
 
     return {
       seed, root, update, prime, collidersNear, clamp, stats, dispose, spawnPoint,
+      // city.js 호환 표면 — enemies.js·objectives.js 가 기대하는 모양을 유지한다.
+      // npcs 는 시민 스트리밍이 붙기 전까지 비어 있다(빈 배열에서 양쪽 모두 안전).
+      npcs: [],
+      anim: {},
       bounds: { minX: -WORLD_HALF, maxX: WORLD_HALF, minZ: -WORLD_HALF, maxZ: WORLD_HALF },
       curbY: CURB_Y,
       invalidate: function () { nearKey = ''; },
@@ -348,5 +391,23 @@
     };
   }
 
+  /**
+   * AABB 목록에 대한 원(반지름 r) 밀어내기 — 새 객체 생성 없음.
+   * city.js 에 있던 것을 그대로 옮겨왔다(city.js 는 더 이상 로드하지 않는다).
+   */
+  function resolveCollision(pos, r, colliders) {
+    for (let i = 0; i < colliders.length; i++) {
+      const c = colliders[i];
+      const dx = pos.x - c.x, dz = pos.z - c.z;
+      const ox = c.hx + r - Math.abs(dx);
+      const oz = c.hz + r - Math.abs(dz);
+      if (ox > 0 && oz > 0) {
+        if (ox < oz) pos.x += dx >= 0 ? ox : -ox;
+        else pos.z += dz >= 0 ? oz : -oz;
+      }
+    }
+  }
+
+  L.resolveCollision = resolveCollision;
   L.World = { create, buildChunk };   // buildChunk 는 예산 계측 하네스용 seam
 })(window.LEGO);

@@ -28,32 +28,23 @@
     <div id="hitmark"></div>
     <div id="hurt-flash"></div>
 
+    <!-- 오픈월드 HUD: 길을 잃지 않게 방향과 현재 구역을 항상 보여준다(SPEC 10장) -->
     <div id="top-bar">
       <div class="panel">
-        <div class="label">웨이브</div>
-        <div class="value" id="wave-value">1</div>
+        <div class="label">방향</div>
+        <div class="value" id="compass-value">북</div>
       </div>
       <div class="panel">
-        <div class="label">남은 몬스터</div>
-        <div class="value" id="left-value">0</div>
+        <div class="label">지금 여기</div>
+        <div class="value" id="district-value">중앙 광장</div>
       </div>
       <div class="panel">
-        <div class="label">점수</div>
+        <div class="label">모은 브릭</div>
         <div class="value" id="score-value">0</div>
       </div>
       <div class="panel" id="combo-panel">
         <div class="label">연속</div>
         <div class="value" id="combo-value">0</div>
-      </div>
-    </div>
-
-    <div id="objective-bar" aria-label="도시 방어 상태">
-      <div class="objective-panel" id="city-panel">
-        <div class="objective-head"><span>🏙️ 도시 무결도</span><b id="city-value">100</b></div>
-        <div class="objective-track"><div id="city-fill"></div></div>
-      </div>
-      <div class="objective-panel citizen-panel">
-        <span>🧍 시민 대피</span><b id="citizen-value">0 / 13</b>
       </div>
     </div>
 
@@ -196,7 +187,10 @@
 <script src="./src/loadout.js"></script>
 <script src="./src/storage.js"></script>
 <script src="./src/minifig.js"></script>
-<script src="./src/city.js"></script>
+<script src="./src/rng.js"></script>
+<script src="./src/geo-merge.js"></script>
+<script src="./src/world.js"></script>
+<script src="./src/districts.js"></script>
 <script src="./src/hands.js"></script>
 <script src="./src/postfx.js"></script>
 <script src="./src/fx.js"></script>

@@ -35,8 +35,11 @@
     // ---------------- 매크로 사진 느낌 후처리(심도 흐림·비네팅)
     this.post = new L.PostFX(this.renderer, this.camera);
 
-    // ---------------- 도시
-    this.city = L.buildCity(this.scene);
+    // ---------------- 오픈월드 (city.js 복도를 대체)
+    this.world = L.World.create(this.scene, {
+      seed: L.Storage.getNumber('brickcity-seed', null) || 20260821,
+    });
+    this.city = this.world;   // enemies/objectives 가 쓰는 호환 이름
 
     // ---------------- 이펙트 · 몬스터 · 손 · HUD · 입력 · 소리
     this.fx = new L.FX(this.scene);
@@ -48,9 +51,10 @@
     this.sfx = new L.Sfx();
 
     // ---------------- 플레이어 상태
+    const SPAWN = this.world.spawnPoint();
     this.player = {
-      pos: new THREE.Vector3(0, P.eyeHeight + this.city.curbY, 30),
-      yaw: 0, pitch: -0.04,
+      pos: new THREE.Vector3(SPAWN.x, P.eyeHeight + this.world.curbY, SPAWN.z),
+      yaw: SPAWN.yaw, pitch: -0.04,
       hearts: P.maxHearts, mana: P.maxMana,
       ammo: { blaster: 24, bomb: 4 },
       score: 0, kills: 0, combo: 0, comboTimer: 0,
@@ -60,7 +64,7 @@
     };
     this.progression = new L.Progression(this.player, this.objectives);
     this.skillCd = { dragonfire: 0, meteor: 0, fireball: 0 };
-    this.state = 'start';        // start | playing | support | pause | over
+    this.state = 'start';        // start | playing | pause  (오픈월드: 승패 상태 없음)
     this.wave = 1;
     this.waveBreak = 0;
     this.best = L.Storage.getNumber('brickcity-best', 'legocity-best');
@@ -156,8 +160,10 @@
   // ------------------------------------------------------------------ 흐름
   Game.prototype.start = function () {
     const p = this.player;
-    p.pos.set(0, P.eyeHeight + this.city.curbY, 30);
-    p.yaw = 0; p.pitch = -0.04;
+    const sp = this.world.spawnPoint();
+    p.pos.set(sp.x, P.eyeHeight + this.world.curbY, sp.z);
+    p.yaw = sp.yaw; p.pitch = -0.04;   // 첫 화면이 광장을 향하게
+    this.world.prime(p.pos.x, p.pos.z);   // 첫 화면에 빈 도시를 보이지 않는다
     p.hearts = P.maxHearts;
     p.mana = P.maxMana;
     p.ammo.blaster = 24;
@@ -180,9 +186,8 @@
     if (this.input.touchMode) this.hud.showTouch(true);
     this.sfx.resume();
     this.input.requestLock();
-    this.enemies.startWave(this.wave);
-    this.hud.toast('웨이브 1\n브릭 몬스터가 온다!', 2.2);
-    this.sfx.wave();
+    // 오픈월드: 시작하자마자 웨이브를 걸지 않는다. 전투는 선택이다(GAME_DESIGN_SPEC 9장)
+    this.hud.toast('브릭 시티에 온 걸 환영해!\n마음대로 돌아다녀 봐', 2.8);
   };
 
   Game.prototype.resume = function () {
@@ -239,8 +244,11 @@
     this.hud.hurt();
     this.sfx.hurt();
     if (p.hearts <= 0) {
-      p.hearts = 0;
-      this.gameOver(false);
+      // 오픈월드는 게임오버로 진행을 차단하지 않는다(GAME_DESIGN_SPEC 9장)
+      p.hearts = P.maxHearts;
+      p.invuln = 2.4;
+      p.combo = 0;
+      this.hud.toast('앗! 잠깐 쉬었다 가자', 1.8);
     }
   };
 
@@ -397,17 +405,15 @@
     p.pos.x += vx;
     p.pos.z += vz;
 
-    // 도시 충돌 + 경계
-    L.resolveCollision(p.pos, 2.0, this.city.colliders);
-    const b = this.city.bounds;
-    p.pos.x = Math.max(b.minX, Math.min(b.maxX, p.pos.x));
-    p.pos.z = Math.max(b.minZ, Math.min(b.maxZ, p.pos.z));
+    // 충돌은 주변 3x3 청크만 검사한다(전 월드 순회 금지). 경계는 해안선.
+    L.resolveCollision(p.pos, 2.0, this.world.collidersNear(p.pos.x, p.pos.z));
+    this.world.clamp(p.pos);
 
     // 걸을 때 시선 흔들림
     const moving = len > 0.05;
     p.bob += dt * (moving ? (inp.sprint ? 13 : 9) : 2.2);
     const bobY = moving ? Math.sin(p.bob) * (inp.sprint ? 0.22 : 0.14) : Math.sin(p.bob) * 0.04;
-    p.pos.y = P.eyeHeight + this.city.curbY;
+    p.pos.y = P.eyeHeight + this.world.curbY;
 
     this.camera.position.set(p.pos.x, p.pos.y + bobY, p.pos.z);
     this.camera.rotation.set(p.pitch, p.yaw, Math.sin(p.bob * 0.5) * (moving ? 0.012 : 0.003));
@@ -477,6 +483,18 @@
     return best;
   };
 
+  /** 현재 서 있는 부지의 구역 이름. 값이 바뀔 때만 새로 계산한다. */
+  Game.prototype.districtLabel = function () {
+    const LOTSZ = L.WORLD_CONST.LOT;
+    const lx = Math.floor(this.player.pos.x / LOTSZ);
+    const lz = Math.floor(this.player.pos.z / LOTSZ);
+    if (lx !== this._lotX || lz !== this._lotZ) {
+      this._lotX = lx; this._lotZ = lz;
+      this._districtLabel = L.Districts.labelAt(this.world.seed, lx, lz);
+    }
+    return this._districtLabel;
+  };
+
   // ------------------------------------------------------------------ 루프
   Game.prototype._loop = function (nowMs) {
     requestAnimationFrame(this._loop);
@@ -489,6 +507,8 @@
     if (this.state === 'playing') {
       const speed01 = this.updatePlayer(dt);
       this.updateChannel(dt);
+      // 프레임당 청크 생성 상한 2 — 이동 중 히칭 방지
+      this.world.update(this.player.pos.x, this.player.pos.z, 2);
       this.updateCity(dt);
 
       // 그림자 카메라를 플레이어 주변으로 따라오게(멀리까지 2048 낭비 금지)
@@ -529,6 +549,8 @@
         citizensSaved: this.objectives.waveSaved,
         citizensLost: this.objectives.waveLost,
         citizensTotal: this.city.npcs.length,
+        yaw: this.player.yaw,
+        district: this.districtLabel(),
       });
     } else {
       // 멈춘 동안에도 도시는 살아있게(시작 화면 배경)
@@ -537,7 +559,8 @@
       if (this.state === 'start') {
         // 시작 화면: 도시를 천천히 둘러본다
         const t = this.time * 0.06;
-        this.camera.position.set(Math.sin(t) * 4, P.eyeHeight + this.city.curbY + 1.2, 30 + Math.cos(t) * 3);
+        const sp0 = this.world.spawnPoint();
+        this.camera.position.set(sp0.x + Math.sin(t) * 4, P.eyeHeight + this.world.curbY + 1.2, sp0.z + Math.cos(t) * 3);
         this.camera.rotation.set(-0.05, Math.sin(t * 0.7) * 0.16, 0);
       }
     }
