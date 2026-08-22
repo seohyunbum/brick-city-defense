@@ -203,14 +203,8 @@
     this.fx = fx;
     this.city = city;
     this.list = [];
-    this.hooks = { hitPlayer: null, onKill: null, onWaveClear: null };
-    this.wave = 0;
-    this.queue = [];
-    this.spawnTimer = 0;
-    this.spawnGap = 1.1;
-    this.waveActive = false;
+    this.hooks = { hitPlayer: null, onKill: null };
     this.boss = null;
-    this._spawnSerial = 0;
     this._v = new THREE.Vector3();
     this._v2 = new THREE.Vector3();
 
@@ -231,7 +225,7 @@
           alive: false, type: id, def: t, group: built.group, parts: built.parts, bar,
           hp: t.hp, maxHp: t.hp, pos: new THREE.Vector3(), speed: t.speed, radius: t.radius,
           color: t.color, phase: Math.random() * 6.28, attackTimer: 0, hurt: 0, stagger: 0,
-          y0: 0, scaleBase: 1, spawnOrder: 0, targetKind: 'player',
+          y0: 0, scaleBase: 1, isLord: false, targetKind: 'player',
         });
       }
     }
@@ -243,33 +237,7 @@
     return n;
   };
 
-  Enemies.prototype.remaining = function () {
-    return this.aliveCount() + this.queue.length;
-  };
-
-  /** 웨이브 구성 — 갈수록 많아지고 5웨이브마다 보스 */
-  Enemies.prototype.startWave = function (n) {
-    this.wave = n;
-    this._spawnSerial = 0;
-    this.queue.length = 0;
-    const slimes = Math.min(20, 4 + n * 2);
-    const bats = n >= 2 ? Math.min(10, Math.floor(n * 0.9)) : 0;
-    const golems = n >= 3 ? Math.min(7, Math.floor((n - 1) / 2)) : 0;
-    for (let i = 0; i < slimes; i++) this.queue.push('slime');
-    for (let i = 0; i < bats; i++) this.queue.push('bat');
-    for (let i = 0; i < golems; i++) this.queue.push('golem');
-    // 섞기(항상 같은 순서로 나오면 심심하다)
-    for (let i = this.queue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = this.queue[i]; this.queue[i] = this.queue[j]; this.queue[j] = tmp;
-    }
-    if (n % 5 === 0) this.queue.unshift('dragon');
-    this.spawnGap = Math.max(0.42, 1.15 - n * 0.05);
-    this.spawnTimer = 0.9;
-    this.waveActive = true;
-    return { wave: n, count: this.queue.length, boss: n % 5 === 0 };
-  };
-
+  /** 풀에서 놀고 있는 개체 하나 (핫패스 할당 금지 — 미리 만들어 둔 것을 재사용한다) */
   Enemies.prototype._free = function (type) {
     for (let i = 0; i < this.list.length; i++) {
       const e = this.list[i];
@@ -278,29 +246,49 @@
     return null;
   };
 
-  Enemies.prototype.spawn = function (type) {
+  /**
+   * 지정한 자리에 한 마리 내보낸다 — 위치는 director.js 가 정한다.
+   * 웨이브 번호가 아니라 구역 위협 등급(level)이 강함을 정한다.
+   */
+  Enemies.prototype.spawnAt = function (type, pos, o) {
+    o = o || {};
     const e = this._free(type);
     if (!e) return null;
     const t = e.def;
-    const hpScale = 1 + (this.wave - 1) * 0.14;
+    const level = o.level || 1;
+    const scale = o.scale || 1;
     e.alive = true;
-    e.maxHp = Math.round(t.hp * hpScale);
+    e.isLord = !!o.lord;
+    e.lordName = null;
+    e.maxHp = Math.round(t.hp * (1 + (level - 1) * 0.32) * (o.hpMul || 1));
     e.hp = e.maxHp;
-    e.attackTimer = 0.6;
+    e.radius = t.radius * scale;
+    e.speed = t.speed * (o.speedMul || 1);
+    e.attackTimer = 0.8;
     e.hurt = 0;
     e.stagger = 0;
-    e.spawnOrder = this._spawnSerial++;
     e.phase = Math.random() * 6.28;
-    // 도로 저편에서 등장
-    const lane = (Math.random() - 0.5) * 22;
-    e.pos.set(lane, t.flying ? t.hover : this.city.curbY, -46 - Math.random() * 30);
-    e.y0 = t.flying ? t.hover : this.city.curbY;
+    e.pos.set(pos.x, t.flying ? (t.hover || 10) : this.city.curbY, pos.z);
+    e.y0 = e.pos.y;
     e.group.position.copy(e.pos);
+    e.group.scale.setScalar(scale);
+    e.scaleBase = scale;
     e.group.visible = true;
-    e.group.scale.setScalar(1);
-    if (e.bar) e.bar.visible = true;
-    if (t.boss) this.boss = e;
+    if (e.bar) {
+      e.bar.visible = true;
+      e.bar.scale.set(e.radius * 2.2, e.radius * 2.2, 1);
+    }
+    if (e.isLord) this.boss = e;
     return e;
+  };
+
+  /** 조용히 회수 — 보상도 파편도 없다(멀어져서 없애는 것이지 잡은 게 아니다) */
+  Enemies.prototype.despawn = function (e) {
+    if (!e.alive) return;
+    e.alive = false;
+    e.group.visible = false;
+    if (e.bar) e.bar.visible = false;
+    if (this.boss === e) this.boss = null;
   };
 
   /** 한 점 근처의 몬스터 하나 찾기(발사체 명중용) */
@@ -385,18 +373,6 @@
   };
 
   Enemies.prototype.update = function (dt, playerPos, camera, objectives) {
-    // ---- 등장 대기열
-    if (this.waveActive && this.queue.length) {
-      this.spawnTimer -= dt;
-      if (this.spawnTimer <= 0) {
-        this.spawn(this.queue.shift());
-        this.spawnTimer = this.spawnGap;
-      }
-    } else if (this.waveActive && this.aliveCount() === 0) {
-      this.waveActive = false;
-      if (this.hooks.onWaveClear) this.hooks.onWaveClear(this.wave);
-    }
-
     const v = this._v;
     for (let i = 0; i < this.list.length; i++) {
       const e = this.list[i];
@@ -500,10 +476,7 @@
       e.group.visible = false;
       if (e.bar) e.bar.visible = false;
     }
-    this.queue.length = 0;
-    this.waveActive = false;
     this.boss = null;
-    this._spawnSerial = 0;
   };
 
   L.ENEMY_TYPES = TYPES;

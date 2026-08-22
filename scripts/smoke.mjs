@@ -51,12 +51,10 @@ await page.screenshot({ path: resolve(outDir, '02-first-person.png') });
 // 몬스터를 눈앞에 불러서 전투 화면
 await page.evaluate(() => {
   const g = window.LEGO_GAME;
+  const at = new THREE.Vector3();
   for (const t of ['slime', 'slime', 'slime', 'golem', 'bat']) {
-    const e = g.enemies.spawn(t);
-    if (e) {
-      e.pos.set((Math.random() - 0.5) * 16, e.def.flying ? e.def.hover : g.city.curbY, -12 - Math.random() * 22);
-      e.group.position.copy(e.pos);
-    }
+    at.set(g.player.pos.x + (Math.random() - 0.5) * 16, 0, g.player.pos.z - 12 - Math.random() * 22);
+    g.enemies.spawnAt(t, at, { level: 1 });
   }
 });
 await page.waitForTimeout(700);
@@ -111,7 +109,6 @@ await page.evaluate(() => {
   const g = window.LEGO_GAME;
   g.start();
   g.enemies.clear();
-  g.enemies.queue.length = 0;
   g.input.attackHeld = false;
 });
 await page.waitForTimeout(200);
@@ -204,12 +201,38 @@ const peaceful = await page.evaluate(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   g.start();
   await wait(1600);
-  return { alive: g.enemies.aliveCount(), waveActive: g.enemies.waveActive, state: g.state };
+  return { alive: g.enemies.aliveCount(), safe: g.director.safe, district: g.director.label, state: g.state };
 });
-if (peaceful.alive !== 0 || peaceful.waveActive) {
+if (peaceful.alive !== 0 || !peaceful.safe) {
   throw new Error('시작하자마자 강제 전투가 걸렸다(오픈월드 위반): ' + JSON.stringify(peaceful));
 }
 console.log('전투 선택제 확인:', JSON.stringify(peaceful));
+
+// (3.5) 위험 구역에는 실제로 몬스터가 산다 — 빈 월드를 합격시키지 않는다
+const wilds = await page.evaluate(async () => {
+  const g = window.LEGO_GAME;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  g.start();
+  // 외곽(농장·공원 링)으로 이동 — 안전지대가 아닌 구역
+  g.player.pos.set(-8 * 64 + 32, g.player.pos.y, -8 * 64 + 32);
+  g.world.prime(g.player.pos.x, g.player.pos.z);
+  await wait(6000);
+  return {
+    district: g.director.label,
+    safe: g.director.safe,
+    level: g.director.level,
+    alive: g.enemies.aliveCount(),
+    lord: !!(g.enemies.boss && g.enemies.boss.alive),
+    state: g.state,
+  };
+});
+if (wilds.safe || wilds.alive < 1) {
+  throw new Error('위험 구역이 비어 있다(오픈월드에 할 일이 없다): ' + JSON.stringify(wilds));
+}
+if (wilds.state !== 'playing') {
+  throw new Error('위험 구역에서 진행이 끊겼다: ' + JSON.stringify(wilds));
+}
+console.log('위험 구역 서식 확인:', JSON.stringify(wilds));
 
 // (4) 월드 어느 지점에서도 렌더 예산 — 평균이 아니라 최악값으로 판정한다
 const worldBudget = await page.evaluate(async () => {
@@ -398,14 +421,14 @@ const storageFlow = await denied.evaluate(() => {
   const g = window.LEGO_GAME;
   g.start();
   g.player.score = 321;
-  g.gameOver(false);
+  g.recordBest();
   return {
     state: g.state,
     best: g.best,
     memory: window.LEGO.Storage._memory['brickcity-best'],
   };
 });
-if (storageFlow.state !== 'over' || storageFlow.best !== 321 || storageFlow.memory !== '321') {
+if (storageFlow.state !== 'playing' || storageFlow.best !== 321 || storageFlow.memory !== '321') {
   throw new Error('저장소 차단 fallback 실패: ' + JSON.stringify(storageFlow));
 }
 if (deniedErrors.length) {

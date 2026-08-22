@@ -87,16 +87,9 @@ html, body {
   background: var(--panel); border: 2px solid var(--stroke); backdrop-filter: blur(4px);
   font-size: 14px; font-weight: 800; text-shadow: 0 1px 3px #000;
 }
-.objective-head, .citizen-panel { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .objective-track {
   height: 9px; margin-top: 5px; overflow: hidden; border-radius: 6px; background: rgba(0, 0, 0, 0.55);
 }
-#city-fill { width: 100%; height: 100%; background: #4bd44b; transition: width 0.2s ease, background 0.2s ease; }
-#city-fill.warning { background: #f2cd37; }
-#city-fill.danger { background: #c91a09; }
-#city-panel.hurt { border-color: #ff6b51; transform: scale(1.04); }
-.citizen-panel { min-width: 210px; }
-
 
 /* ------------------------------------------------------------- 보스 체력 */
 #boss-bar {
@@ -115,6 +108,8 @@ html, body {
 }
 
 /* ------------------------------------------------------------- 토스트 */
+#threat-value.danger { color: #ff8f6b; }
+
 #toast {
   position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
   font-size: 34px; font-weight: 900; text-align: center; letter-spacing: 1px;
@@ -249,17 +244,10 @@ button:focus-visible { outline: 4px solid #fff; outline-offset: 4px; }
 .result b { color: var(--lego-yellow); }
 
 /* ------------------------------------------------------------- 터치 조작 */
-.support-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
-.support-card {
   min-height: 170px; margin: 0; padding: 18px 14px; color: #fff; background: rgba(255, 255, 255, 0.08);
   border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px;
 }
-.support-card:hover, .support-card:focus-visible { border-color: var(--lego-yellow); background: rgba(242, 205, 55, 0.16); }
-.support-card:active { transform: translateY(2px); box-shadow: none; }
-.support-card .support-icon { font-size: 40px; }
-.support-card b { font-size: 18px; }
-.support-card small { min-height: 38px; font-size: 14px; line-height: 1.35; opacity: 0.85; }
 
 #touch { position: fixed; inset: 0; z-index: 12; pointer-events: none; }
 #stick {
@@ -296,8 +284,5 @@ button:focus-visible { outline: 4px solid #fff; outline-offset: 4px; }
   .sheet h1 { font-size: 30px; }
   #objective-bar { top: 76px; width: calc(100vw - 18px); gap: 6px; }
   .objective-panel { min-width: 0; flex: 1; padding: 6px 8px; font-size: 12px; }
-  .citizen-panel { min-width: 0; }
   #boss-bar { top: 132px; }
-  .support-grid { grid-template-columns: 1fr; }
-  .support-card { min-height: 92px; }
 }

@@ -45,6 +45,7 @@
     this.fx = new L.FX(this.scene);
     this.enemies = new L.Enemies(this.scene, this.fx, this.city);
     this.objectives = new L.Objectives(this.city);
+    this.director = new L.Director(this.world, this.enemies);
     this.hands = new L.Hands(this.camera);
     this.hud = new L.HUD();
     this.input = new L.Input(canvas);
@@ -62,11 +63,9 @@
       manaRegenBonus: 0,
       bob: 0,
     };
-    this.progression = new L.Progression(this.player, this.objectives);
+    this.progression = new L.Progression(this.player);
     this.skillCd = { dragonfire: 0, meteor: 0, fireball: 0 };
     this.state = 'start';        // start | playing | pause  (오픈월드: 승패 상태 없음)
-    this.wave = 1;
-    this.waveBreak = 0;
     this.best = L.Storage.getNumber('brickcity-best', 'legocity-best');
     this.time = 0;
 
@@ -129,17 +128,16 @@
 
     this.enemies.hooks.hitPlayer = (dmg) => self.hurtPlayer(dmg);
     this.enemies.hooks.onKill = (e) => self.onKill(e);
-    this.enemies.hooks.onWaveClear = (n) => self.onWaveClear(n);
-    this.objectives.hooks.onDamage = () => self.hud.cityHurt();
-    this.objectives.hooks.onCitizenSafe = () => { self.player.score += 50; self.hud.toast('시민 대피 성공! +50', 0.8); };
-    this.objectives.hooks.onCitizenLost = () => self.hud.toast('시민 대피 실패! 도시 무결도 감소', 1.2);
-    this.objectives.hooks.onFailure = () => self.gameOver(false, 'city');
+    this.objectives.hooks.onCitizenLost = () => self.hud.toast('시민이 다쳤다!', 1.2);
+    this.director.hooks.onDistrict = (label, threat, safe) => {
+      self.hud.toast((safe ? '🛡️ ' : '⚠️ ') + label + ' · ' + threat, 1.6);
+    };
+    this.director.hooks.onLord = (name) => {
+      self.hud.toast('👑 ' + name + ' 이(가) 깨어났다!', 2.4);
+      self.sfx.wave();
+    };
     document.getElementById('start-btn').addEventListener('click', () => self.start());
-    document.getElementById('again-btn').addEventListener('click', () => self.start());
     document.getElementById('resume-btn').addEventListener('click', () => self.resume());
-    document.querySelectorAll('[data-support]').forEach((button) => {
-      button.addEventListener('click', () => self.chooseSupport(button.dataset.support));
-    });
     this.canvas.addEventListener('click', () => {
       if (self.state === 'pause') self.resume();
       else if (self.state === 'playing') self.input.requestLock();
@@ -172,9 +170,8 @@
     p.invuln = 0; p.weaponCd = 0; p.channelTimer = 0; p.channelSkill = null;
     p.manaRegenBonus = 0;
     this.skillCd.dragonfire = this.skillCd.meteor = this.skillCd.fireball = 0;
-    this.wave = 1;
-    this.waveBreak = 0;
     this.enemies.clear();
+    this.director.reset();
     this.fx.clear();
     this.progression.reset();
     this.objectives.startRun();
@@ -197,32 +194,6 @@
     this.input.requestLock();
   };
 
-  Game.prototype.onWaveClear = function (n) {
-    const result = this.objectives.completeWave();
-    this.player.score += n * 120 + result.protected * 25 + Math.round(result.integrity);
-    if (n >= 10) {
-      this.gameOver(true);
-      return;
-    }
-    this.wave = n + 1;
-    this.waveBreak = 0;
-    this.state = 'support';
-    this.hud.screen('support');
-    if (document.exitPointerLock) document.exitPointerLock();
-    this.sfx.wave();
-  };
-  Game.prototype.chooseSupport = function (kind) {
-    if (this.state !== 'support') return false;
-    const message = this.progression.choose(kind);
-    if (!message) return false;
-    this.state = 'playing';
-    this.waveBreak = 2.2;
-    this.hud.screen(null);
-    this.hud.toast(message + '\n다음 웨이브 준비', 1.8);
-    this.input.requestLock();
-    return true;
-  };
-
   Game.prototype.onKill = function (e) {
     const p = this.player;
     p.kills++;
@@ -232,7 +203,11 @@
     p.score += Math.round(e.def.score * mult);
     this.hud.comboPop();
     this.sfx.pop();
-    if (e.def.boss) this.hud.toast('보스 격파! 🐲', 2.0);
+    if (e.isLord) {
+      this.hud.toast('👑 ' + (e.lordName || '구역의 주인') + ' 격파!\n' +
+        this.progression.award(), 2.8);
+    }
+    this.recordBest();
   };
 
   Game.prototype.hurtPlayer = function (dmg) {
@@ -252,24 +227,12 @@
     }
   };
 
-  Game.prototype.gameOver = function (win, reason) {
-    this.state = 'over';
-    this.failureReason = reason || (win ? 'win' : 'player');
-    this.player.channelTimer = 0;
-    if (this.player.score > this.best) {
-      this.best = this.player.score;
-      L.Storage.setNumber('brickcity-best', this.best);
-    }
-    if (document.exitPointerLock) document.exitPointerLock();
-    this.hud.show(false);
-    this.hud.showTouch(false);
-    this.hud.gameOver({
-      wave: this.wave, score: this.player.score, kills: this.player.kills,
-      best: this.best, win: !!win, reason: this.failureReason,
-      integrity: this.objectives.integrity, maxIntegrity: this.objectives.maxIntegrity,
-      saved: this.objectives.saved, lost: this.objectives.lost,
-    });
-    if (win) this.sfx.wave(); else this.sfx.gameOver();
+  /** 최고 기록 저장 — 오픈월드는 끝나지 않으므로 그때그때 갱신한다 */
+  Game.prototype.recordBest = function () {
+    if (this.player.score <= this.best) return false;
+    this.best = this.player.score;
+    L.Storage.setNumber('brickcity-best', this.best);
+    return true;
   };
 
   // ------------------------------------------------------------------ 전투
@@ -508,20 +471,10 @@
       this.fx.update(dt, this._fxContext);
       this.hands.update(dt, speed01, false);
 
-      // 웨이브 사이 쉬는 시간
-      if (!this.enemies.waveActive && this.waveBreak > 0) {
-        this.waveBreak -= dt;
-        if (this.waveBreak <= 0) {
-          this.objectives.startWave(this.wave);
-          this.enemies.startWave(this.wave);
-          this.hud.toast('웨이브 ' + this.wave + (this.wave % 5 === 0 ? '\n🐲 보스가 온다!' : ''), 2.0);
-          this.sfx.wave();
-        }
-      }
+      // 오픈월드 진행 — 구역 정원 유지·주인 등장·먼 몬스터 회수
+      this.director.update(dt, this.player.pos);
 
       this.hud.update(dt, {
-        wave: this.wave,
-        remaining: this.enemies.remaining(),
         score: this.player.score,
         combo: this.player.combo,
         hearts: this.player.hearts,
@@ -532,13 +485,10 @@
         weaponCd: this.player.weaponCd,
         skillCd: this.skillCd,
         boss: this.enemies.boss,
-        integrity: this.objectives.integrity,
-        maxIntegrity: this.objectives.maxIntegrity,
-        citizensSaved: this.objectives.waveSaved,
-        citizensLost: this.objectives.waveLost,
-        citizensTotal: this.city.npcs.length,
         yaw: this.player.yaw,
-        district: this.world.districtLabel(this.player.pos.x, this.player.pos.z),
+        district: this.director.label,
+        threat: this.director.threatLabel(),
+        safe: this.director.safe,
       });
     } else {
       // 멈춘 동안에도 도시는 살아있게(시작 화면 배경)
