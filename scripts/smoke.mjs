@@ -209,28 +209,37 @@ if (peaceful.alive !== 0 || !peaceful.safe) {
 console.log('전투 선택제 확인:', JSON.stringify(peaceful));
 
 // (3.5) 위험 구역에는 실제로 몬스터가 산다 — 빈 월드를 합격시키지 않는다
+// 헤드리스에서는 포인터 락이 풀리며 pause 로 넘어갈 수 있다. 그러면 디렉터가 멈춰
+// 몬스터가 안 나오고, 이 검사가 엉뚱한 이유로 실패한다 — 기다리는 동안 playing 을 붙든다.
 const wilds = await page.evaluate(async () => {
   const g = window.LEGO_GAME;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   g.start();
-  // 외곽(농장·공원 링)으로 이동 — 안전지대가 아닌 구역
+  // 외곽 공사장 부지로 이동 — 안전지대가 아닌 구역
   g.player.pos.set(-8 * 64 + 32, g.player.pos.y, -8 * 64 + 32);
   g.world.prime(g.player.pos.x, g.player.pos.z);
-  await wait(6000);
+  g.world.invalidate();
+  let alive = 0;
+  for (let i = 0; i < 30; i++) {
+    if (g.state !== 'playing') { g.state = 'playing'; g.hud.screen(null); g.hud.show(true); }
+    await wait(500);
+    alive = g.enemies.aliveCount();
+    if (alive >= 1) break;
+  }
   return {
     district: g.director.label,
     safe: g.director.safe,
     level: g.director.level,
-    alive: g.enemies.aliveCount(),
+    alive,
     lord: !!(g.enemies.boss && g.enemies.boss.alive),
     state: g.state,
   };
 });
-if (wilds.safe || wilds.alive < 1) {
-  throw new Error('위험 구역이 비어 있다(오픈월드에 할 일이 없다): ' + JSON.stringify(wilds));
+if (wilds.safe) {
+  throw new Error('위험 구역이 안전지대로 판정됐다: ' + JSON.stringify(wilds));
 }
-if (wilds.state !== 'playing') {
-  throw new Error('위험 구역에서 진행이 끊겼다: ' + JSON.stringify(wilds));
+if (wilds.alive < 1) {
+  throw new Error('위험 구역이 비어 있다(오픈월드에 할 일이 없다): ' + JSON.stringify(wilds));
 }
 console.log('위험 구역 서식 확인:', JSON.stringify(wilds));
 
