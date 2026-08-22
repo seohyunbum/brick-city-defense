@@ -148,7 +148,7 @@
     const list = this.enemies.list;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e.alive) continue;
+      if (!e.alive || e.isLord) continue;   // 주인은 회수하지 않는다(쿨다운만 태우고 사라지면 손해)
       const dx = e.pos.x - playerPos.x, dz = e.pos.z - playerPos.z;
       if (dx * dx + dz * dz > CULL_DIST * CULL_DIST) this.enemies.despawn(e);
     }
