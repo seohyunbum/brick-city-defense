@@ -133,7 +133,7 @@
       self.hud.toast((safe ? '🛡️ ' : '⚠️ ') + label + ' · ' + threat, 1.6);
     };
     this.director.hooks.onLord = (name) => {
-      self.hud.toast('👑 ' + name + ' 이(가) 깨어났다!', 2.4);
+      self.hud.toast('👑 ' + name + ' 등장!\n조심해 — 아니면 그냥 지나가도 돼', 2.6);
       self.sfx.wave();
     };
     document.getElementById('start-btn').addEventListener('click', () => self.start());
