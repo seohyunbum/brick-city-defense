@@ -118,10 +118,26 @@ const pre = await page.evaluate(() => {
   const g = window.LEGO_GAME;
   return { x: g.player.pos.x, z: g.player.pos.z, yaw: g.player.yaw };
 });
+// 이동량은 프레임 수에 비례한다. 소프트웨어 렌더러 러너는 초당 2~4프레임까지
+// 떨어지므로 '1.5초 동안' 으로 재면 기기 속도를 재는 셈이 된다(CI 실패 실측:
+// 전진 1.3 / 로컬 5.3~7.9 — 방향은 맞고 양만 모자랐다). 그래서 시간이 아니라
+// '앞으로 2 이상 갈 때까지' 누르고, 그때까지 걸린 시간을 증거로 남긴다.
 await page.keyboard.down('KeyW');
 await page.mouse.move(700, 450);
 await page.mouse.down();
-await page.waitForTimeout(1500);
+const moveDeadline = Date.now() + 8000;
+let moveWaitedMs = 0;
+while (Date.now() < moveDeadline) {
+  await page.waitForTimeout(250);
+  moveWaitedMs += 250;
+  const far = await page.evaluate((pre0) => {
+    const g = window.LEGO_GAME;
+    if (g.state !== 'playing') { g.state = 'playing'; g.hud.screen(null); g.hud.show(true); }
+    const dx = g.player.pos.x - pre0.x, dz = g.player.pos.z - pre0.z;
+    return dx * -Math.sin(pre0.yaw) + dz * -Math.cos(pre0.yaw);
+  }, pre);
+  if (far >= 2) break;
+}
 await page.mouse.up();
 await page.keyboard.up('KeyW');
 await page.keyboard.press('Digit1');
@@ -143,8 +159,10 @@ const play = await page.evaluate((pre) => {
     mana: Math.round(g.player.mana),
   };
 }, pre);
+play.waitedMs = moveWaitedMs;
 if (play.forward < 2) {
-  throw new Error('W 키로 앞으로 나아가지 못했다: 전진성분=' + play.forward + ' 총이동=' + play.moved);
+  throw new Error('W 키로 앞으로 나아가지 못했다(' + moveWaitedMs + 'ms 눌렀다): 전진성분=' +
+    play.forward + ' 총이동=' + play.moved);
 }
 if (play.weapon !== 'sword') throw new Error('1번 키로 검을 들지 못했다: ' + play.weapon);
 if (play.skill !== 'fireball') throw new Error('6번 키로 파이어볼을 들지 못했다: ' + play.skill);
