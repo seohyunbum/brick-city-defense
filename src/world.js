@@ -74,6 +74,38 @@
     }
   }
 
+  /** 임의 회전 박스 — props.js 의 기울인 소품용(축정렬이면 pushBox 를 쓴다) */
+  function pushBoxRot(b, cx, cy, cz, w, h, d, color, rx, ry, rz) {
+    _p.set(cx, cy, cz);
+    _s.set(w, h, d);
+    _e.set(rx || 0, ry || 0, rz || 0);
+    _q.setFromEuler(_e);
+    _m.compose(_p, _q, _s);
+    const box = geos().box;
+    const uX = [d / STUDU, h / BRICKH];
+    const uY = [w / STUDU, d / STUDU];
+    const uZ = [w / STUDU, h / BRICKH];
+    const faceUV = [uX, uX, uY, uY, uZ, uZ];
+    if (b.studs) {
+      b.studs.add(box, _m, color, { faceUV, faces: [2] });
+      b.sides.add(box, _m, color, { faceUV, faces: [0, 1, 3, 4, 5] });
+    } else {
+      b.add(box, _m, color, { faceUV });
+    }
+  }
+
+  /** 임의 회전 원통 — 눕힌 통나무·도르래 축. 돌기는 올리지 않는다. */
+  function pushCylRot(b, cx, cy, cz, r, h, color, rx, ry, rz) {
+    _p.set(cx, cy, cz);
+    _s.set(r * 2, h, r * 2);
+    _e.set(rx || 0, ry || 0, rz || 0);
+    _q.setFromEuler(_e);
+    _m.compose(_p, _q, _s);
+    (b.sides || b).add(geos().cyl, _m, color, {
+      uv: [Math.max(1, (2 * Math.PI * r) / STUDU), Math.max(1, h / BRICKH)],
+    });
+  }
+
   const BAY = 4.2;      // 창 하나 몫의 가로 폭
   const FLOOR = 3.2;    // 한 층 높이
 
@@ -131,7 +163,7 @@
   }
 
   L.WORLD_CONST = { CHUNK, HALF_CHUNKS, WORLD_HALF, LOT, ROAD_HALF, CURB_Y, VIEW_RADIUS };
-  L.WorldDraw = { pushBox, pushWall, pushCyl, pushCone, pushSph, collide, geos };
+  L.WorldDraw = { pushBox, pushBoxRot, pushWall, pushCyl, pushCylRot, pushCone, pushSph, collide, geos };
 
   // ------------------------------------------------------------- 청크 포장
   /** 아스팔트 바닥 + 부지 인도. 도로는 64 배수 좌표에 깔린다. */

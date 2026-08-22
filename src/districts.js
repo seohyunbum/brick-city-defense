@@ -12,6 +12,7 @@
   const C = L.COLORS;
   const W = L.WorldDraw;
   const R = L.RNG;
+  const PR = L.Props;
 
   // 고정 랜드마크 — 멀리서 보이고 위치가 변하지 않는다
   const LANDMARKS = {
@@ -226,6 +227,11 @@
     if (R.chance(rand, 0.6)) {
       W.pushCyl(b, cx, 0.6, cz, size * 0.2, 0.2, C.azure);            // 연못
       bench(ctx, cx + size * 0.28, cz, 0);
+    } else {
+      // 연못이 없는 공원은 야영지 — 모닥불 하나에 텐트 둘
+      PR.campfire(ctx, cx, cz);
+      PR.tent(ctx, cx - size * 0.26, cz + size * 0.16, R.pick(rand, [C.red, C.azure, C.brightGreen]), 0.4);
+      PR.tent(ctx, cx + size * 0.26, cz - size * 0.16, R.pick(rand, [C.yellow, C.orange, C.purple]), -0.9);
     }
     lamp(ctx, cx - size / 2 + 2.5, cz + size / 2 - 2.5);
   }
@@ -258,6 +264,8 @@
       bench(ctx, cx + Math.cos(a) * size * 0.36, cz + Math.sin(a) * size * 0.36, a);
       lamp(ctx, cx + Math.cos(a) * size * 0.45, cz + Math.sin(a) * size * 0.45);
     }
+    // 종탑 — 광장의 소리 랜드마크. 분수와 겹치지 않게 한쪽으로 물린다.
+    PR.bellTower(ctx, cx - size * 0.36, cz - size * 0.36);
   }
 
   function playground(ctx, cx, cz, size, rand) {
@@ -326,6 +334,12 @@
       W.pushBox(b, px, 0.55 + 0.8, pz, 4.0, 1.6, 3.0, R.pick(rand, [C.orange, C.lightGray, C.brown]));
       W.collide(ctx, px, pz, 2.0, 1.5);
     }
+    // 현장 살림 — 상자·드럼통, 그리고 가끔 감시 망루
+    for (let i = 0; i < 2; i++) {
+      PR.crate(ctx, cx - size * 0.32, cz - size * 0.2 + i * 3.0, 1.2, 0.3);
+      PR.barrel(ctx, cx + size * 0.32, cz + size * 0.2 - i * 2.6, 1, C.orange);
+    }
+    if (R.chance(rand, 0.5)) PR.watchtower(ctx, cx - size * 0.3, cz + size * 0.3);
   }
 
   function garage(ctx, cx, cz, size, rand) {
@@ -338,6 +352,12 @@
     for (let i = 0; i < 3; i++) {
       parkedCar(ctx, cx + (i - 1) * 7.5, cz + size * 0.22, Math.PI / 2, cols[(i + (rand() * 5 | 0)) % cols.length]);
     }
+    // 정비소 뒷마당 — 기름통과 부품 상자
+    for (let i = 0; i < 3; i++) {
+      PR.barrel(ctx, cx + size * 0.34, cz - size * 0.28 + i * 2.4, 1,
+                R.pick(rand, [C.darkGray, C.red, C.azure]));
+    }
+    PR.crate(ctx, cx - size * 0.34, cz - size * 0.26, 1.1, 0.2);
   }
 
   function farm(ctx, cx, cz, size, rand) {
@@ -353,6 +373,17 @@
     W.pushCone(b, cx, 0.55 + 6.2, cz - size * 0.34, 7.6, 3.0, C.white);
     W.collide(ctx, cx, cz - size * 0.34, 5.5, 4.0);
     tree(ctx, cx + size / 2 - 3, cz + size / 2 - 3, 1.2);
+    // 농장 살림 — 허수아비·건초·호박·우물
+    PR.scarecrow(ctx, cx - size * 0.28, cz + size * 0.12);
+    for (let i = 0; i < 2; i++) {
+      PR.hayBale(ctx, cx + size * 0.3, cz - size * 0.1 + i * 4.4, R.range(rand, 0, 0.6));
+    }
+    for (let i = 0; i < 3; i++) {
+      PR.pumpkin(ctx, cx + R.range(rand, -size * 0.2, size * 0.2),
+                 cz + size * 0.3 + R.range(rand, -2, 2), R.range(rand, 0.8, 1.2));
+    }
+    if (R.chance(rand, 0.5)) PR.well(ctx, cx + size * 0.32, cz + size * 0.3);
+    PR.fence(ctx, cx, cz + size / 2 - 1.6, size * 0.8, 0);
   }
 
   function harbor(ctx, cx, cz, size, rand) {
@@ -370,6 +401,16 @@
     }
     W.pushCyl(b, cx - size * 0.36, 0.55 + 7, cz, 0.9, 14, C.orange);       // 항만 크레인
     W.pushBox(b, cx - size * 0.36 + 5, 0.55 + 13.6, cz, 14, 1.2, 1.2, C.orange);
+    // 부두 살림 — 나무 상자·드럼통·망루
+    for (let i = 0; i < 3; i++) {
+      PR.crate(ctx, cx + R.range(rand, -size * 0.3, size * 0.3),
+               cz + size * 0.34, R.range(rand, 0.9, 1.4), R.range(rand, 0, 1.2));
+    }
+    for (let i = 0; i < 3; i++) {
+      PR.barrel(ctx, cx - size * 0.3 + i * 2.6, cz - size * 0.34, 1,
+                R.pick(rand, [C.weatheredWood, C.darkGray, C.green]));
+    }
+    PR.watchtower(ctx, cx + size * 0.34, cz - size * 0.3);
   }
 
   function beach(ctx, cx, cz, size, rand) {
@@ -381,6 +422,9 @@
       W.pushCyl(b, px, 0.5 + 2.6, pz, 0.34, 5.2, C.brown);                 // 야자수
       W.pushCone(b, px, 0.5 + 5.6, pz, 3.0, 1.8, C.brightGreen);
     }
+    // 해변 야영 — 모닥불과 텐트 하나
+    PR.campfire(ctx, cx + size * 0.18, cz + size * 0.2);
+    PR.tent(ctx, cx - size * 0.2, cz + size * 0.22, R.pick(rand, [C.azure, C.yellow, C.white]), 0.7);
   }
 
   const STREET = { trafficLight, awning, lamp, tree, citizen, parkedCar };
