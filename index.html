@@ -39,6 +39,10 @@
         <div class="value" id="district-value">중앙 광장</div>
       </div>
       <div class="panel">
+        <div class="label">위협</div>
+        <div class="value" id="threat-value">안전</div>
+      </div>
+      <div class="panel">
         <div class="label">모은 브릭</div>
         <div class="value" id="score-value">0</div>
       </div>
@@ -81,7 +85,7 @@
     <div class="sheet">
       <h1><span class="brick red">브</span><span class="brick yellow">릭</span>
           <span class="brick blue">시</span><span class="brick green">티</span></h1>
-      <p class="sub">브릭 몬스터가 도시로 몰려온다. 시민들을 지켜라!</p>
+      <p class="sub">브릭으로 지은 도시를 마음대로 돌아다녀 보자. 싸울지 지나칠지는 네가 고른다.</p>
 
       <div class="hands-help">
         <div class="hand-card right">
@@ -115,45 +119,11 @@
 
       <button id="start-btn">게임 시작</button>
       <p class="tip">스터드(노란 알맹이)를 주우면 마나가, 파란 알맹이는 총알과 폭탄이 채워진다.<br />
-        골렘은 경찰 거점을, 배트는 시민을 노린다. 시민은 공격 대상이 아니며 도시 무결도 0이면 패배한다.</p>
+        광장·학교·놀이터·경찰서·소방서는 안전지대라 몬스터가 오지 않는다.
+        도시 밖으로 멀리 갈수록 위험해지고, 크레인과 항구에는 구역의 주인이 산다.
+        쓰러져도 게임은 끝나지 않는다 — 잠깐 쉬었다 다시 걸으면 된다.</p>
       <p class="legal-note">LEGO®는 LEGO Group of companies의 상표이며, LEGO Group은 이 독립 사이트를
         후원·승인·보증하지 않습니다.</p>
-    </div>
-  </div>
-
-  <!-- ================= 종료 화면 ================= -->
-  <div id="over-screen" class="screen hidden">
-    <div class="sheet small">
-      <h2 id="over-title">도시가 무너졌다…</h2>
-      <div class="result">
-        <div><span>도달 웨이브</span><b id="over-wave">1</b></div>
-        <div><span>점수</span><b id="over-score">0</b></div>
-        <div><span>잡은 몬스터</span><b id="over-kills">0</b></div>
-        <div><span>남은 도시 무결도</span><b id="over-city">0</b></div>
-        <div><span>지킨 시민</span><b id="over-saved">0</b></div>
-        <div><span>대피 실패</span><b id="over-lost">0</b></div>
-        <div><span>최고 점수</span><b id="over-best">0</b></div>
-      </div>
-      <button id="again-btn">다시 하기</button>
-    </div>
-  </div>
-
-  <!-- ================= 웨이브 사이 지원 선택 ================= -->
-  <div id="support-screen" class="screen hidden">
-    <div class="sheet">
-      <h2>웨이브 방어 성공!</h2>
-      <p class="sub">다음 공격 전에 지원 하나를 선택하세요. 선택은 이번 게임 동안 되돌릴 수 없습니다.</p>
-      <div class="support-grid">
-        <button class="support-card" data-support="ammo">
-          <span class="support-icon">📦</span><b>탄약 보급</b><small>총알과 폭탄을 최대로 보급</small>
-        </button>
-        <button class="support-card" data-support="repair">
-          <span class="support-icon">🔧</span><b>도시 수리</b><small>도시 무결도 +18</small>
-        </button>
-        <button class="support-card" data-support="mana">
-          <span class="support-icon">✨</span><b>마나 강화</b><small>마나 완충·재생 속도 증가</small>
-        </button>
-      </div>
     </div>
   </div>
 
@@ -197,6 +167,7 @@
 <script src="./src/enemies.js"></script>
 <script src="./src/objectives.js"></script>
 <script src="./src/progression.js"></script>
+<script src="./src/director.js"></script>
 <script src="./src/audio.js"></script>
 <script src="./src/hud.js"></script>
 <script src="./src/input.js"></script>

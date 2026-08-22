@@ -12,6 +12,7 @@
       hud: el('hud'),
       compass: el('compass-value'),
       district: el('district-value'),
+      threat: el('threat-value'),
       score: el('score-value'),
       combo: el('combo-value'),
       comboPanel: el('combo-panel'),
@@ -25,23 +26,9 @@
       hurt: el('hurt-flash'),
       bossBar: el('boss-bar'),
       bossFill: el('boss-fill'),
-      cityPanel: el('city-panel'),
-      cityFill: el('city-fill'),
-      cityValue: el('city-value'),
-      citizenValue: el('citizen-value'),
       startScreen: el('start-screen'),
-      overScreen: el('over-screen'),
       pauseScreen: el('pause-screen'),
-      supportScreen: el('support-screen'),
-      overWave: el('over-wave'),
-      overScore: el('over-score'),
-      overKills: el('over-kills'),
-      overBest: el('over-best'),
-      overTitle: el('over-title'),
       touch: el('touch'),
-      overCity: el('over-city'),
-      overSaved: el('over-saved'),
-      overLost: el('over-lost'),
     };
     this.slots = { right: [], left: [] };
     this._buildSlots(this.dom.rightRow, L.WEAPONS, 'right');
@@ -102,19 +89,11 @@
     this.dom.score.textContent = s.score;
     this.dom.combo.textContent = s.combo > 1 ? ('x' + s.combo) : '0';
 
-    // 도시 무결도·시민 대피 패널은 몬스터 이벤트 전용이라 오픈월드 기본 HUD 에서 뺐다.
-    // 이벤트가 붙으면 다시 살린다(SPEC 9장). 그때까지는 null 가드로 안전하게 지나간다.
-    if (this.dom.cityFill && s.integrity !== this._lastIntegrity) {
-      this._lastIntegrity = s.integrity;
-      const cityRatio = Math.max(0, Math.min(1, s.integrity / s.maxIntegrity));
-      this.dom.cityFill.style.width = (cityRatio * 100).toFixed(1) + '%';
-      this.dom.cityValue.textContent = s.integrity + ' / ' + s.maxIntegrity;
-      this.dom.cityFill.classList.toggle('warning', cityRatio <= 0.5 && cityRatio > 0.25);
-      this.dom.cityFill.classList.toggle('danger', cityRatio <= 0.25);
-    }
-    if (this.dom.citizenValue) {
-      this.dom.citizenValue.textContent = s.citizensSaved + ' / ' + s.citizensTotal +
-        (s.citizensLost ? (' · 실패 ' + s.citizensLost) : '');
+    // 위협 — 지금 구역이 안전한지, 얼마나 센 몬스터가 사는지 한눈에
+    if (this.dom.threat && s.threat !== this._lastThreat) {
+      this._lastThreat = s.threat;
+      this.dom.threat.textContent = s.threat || '안전';
+      this.dom.threat.classList.toggle('danger', !s.safe);
     }
 
     // 하트
@@ -219,23 +198,7 @@
   HUD.prototype.screen = function (name) {
     const set = (node, on) => { if (node) node.classList.toggle('hidden', !on); };
     set(this.dom.startScreen, name === 'start');
-    set(this.dom.overScreen, name === 'over');
     set(this.dom.pauseScreen, name === 'pause');
-    set(this.dom.supportScreen, name === 'support');
-  };
-
-  HUD.prototype.gameOver = function (s) {
-    if (!this.dom.overWave) return;   // 오픈월드에는 게임오버가 없다(SPEC 9장)
-    this.dom.overWave.textContent = s.wave;
-    this.dom.overScore.textContent = s.score;
-    this.dom.overKills.textContent = s.kills;
-    this.dom.overBest.textContent = s.best;
-    this.dom.overCity.textContent = s.integrity + ' / ' + s.maxIntegrity;
-    this.dom.overSaved.textContent = s.saved;
-    this.dom.overLost.textContent = s.lost;
-    this.dom.overTitle.textContent = s.win ? '도시를 지켜냈다! 🎉' :
-      (s.reason === 'city' ? '도시 무결도가 0이 됐다…' : '수호자가 쓰러졌다…');
-    this.screen('over');
   };
 
   L.HUD = HUD;

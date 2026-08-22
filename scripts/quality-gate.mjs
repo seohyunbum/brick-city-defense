@@ -146,9 +146,10 @@ let rawColorCount = 0;
 for (const path of walk('src').filter((value) => value.endsWith('.js') && value !== 'src/bricks.js')) {
   rawColorCount += read(path).match(/0x[0-9a-f]{6}\b/giu)?.length || 0;
 }
-if (rawColorCount > 93) fail(`팔레트 밖 직접 색상 증가: ${rawColorCount} > 93`);
+if (rawColorCount > 64) fail(`팔레트 밖 직접 색상 증가: ${rawColorCount} > 64`);
 
-const lineLimit = { 'src/city.js': 1087, 'src/game.js': 631, 'src/objectives.js': 220, 'src/progression.js': 39 };
+// 과대 모듈 래칫 — 현재 줄 수로 잠근다. city.js(복도 도시)는 world.js 로 대체돼 삭제됐다.
+const lineLimit = { 'src/game.js': 579, 'src/objectives.js': 89, 'src/progression.js': 39, 'src/director.js': 216, 'src/enemies.js': 484 };
 for (const [path, limit] of Object.entries(lineLimit)) {
   const lines = read(path).split(/\r?\n/u).length - 1;
   if (lines > limit) fail(`과대 모듈 증가: ${path} ${lines}줄 > ${limit}`);
@@ -160,4 +161,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`정적 품질 게이트 통과: 자산 ${registered.size}개 파일, 런타임 ${(runtimeBytes / 1048576).toFixed(2)}MB, 직접 색상 ${rawColorCount}/93`);
+console.log(`정적 품질 게이트 통과: 자산 ${registered.size}개 파일, 런타임 ${(runtimeBytes / 1048576).toFixed(2)}MB, 직접 색상 ${rawColorCount}/64`);
