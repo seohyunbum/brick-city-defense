@@ -290,6 +290,145 @@ if (worldBudget.worstCalls > 650 || worldBudget.worstTris > 125000) {
 }
 console.log('월드 예산 확인(최악값):', JSON.stringify(worldBudget));
 
+// ---------------------------------------------------------------- 브릭 도감 계약
+// (5) 생물 36종이 모두 실제 지오메트리로 구워지고, 무기로는 절대 다치지 않고,
+//     가까이 가면 도감에 남고, 간식을 주면 친구가 되어 기록이 저장된다.
+const creatures = await page.evaluate(async () => {
+  const g = window.LEGO_GAME;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  g.start();
+  g.dex.clear();
+  g.companions.clear();
+  g.enemies.clear();
+
+  // 종별 지오메트리 — 하나라도 비면 그 종은 화면에 안 나온다
+  const species = window.LEGO.Creatures.SPECIES;
+  let emptyGeometry = 0, tris = 0;
+  const names = new Set();
+  const plans = new Set();
+  for (const sp of species) {
+    const geo = g.companions.geo[sp.id];
+    names.add(sp.name);
+    plans.add(sp.plan);
+    if (!geo || !geo.body || !geo.limbA || !geo.limbB) { emptyGeometry++; continue; }
+    tris += (geo.body.getAttribute('position').count +
+      geo.limbA.getAttribute('position').count +
+      geo.limbB.getAttribute('position').count) / 3;
+  }
+
+  // 상한까지 세워 본다 — 풀 상한을 넘겨 스폰되지 않아야 한다
+  const at = new THREE.Vector3();
+  for (let i = 0; i < 12; i++) {
+    at.set(g.player.pos.x - 12 + (i % 6) * 5, 0, g.player.pos.z - 14);
+    g.companions.spawnAt(species[i % species.length], at);
+  }
+  const alive = g.companions.aliveCount();
+
+  // 소프트웨어 렌더러는 초당 몇 프레임이라 실제 게임 시간이 거의 흐르지 않는다.
+  // 규칙 검증은 고정 dt 로 직접 돌린다(프레임 속도를 재는 검사가 아니다).
+  const dt = 0.05;
+  for (let i = 0; i < 240; i++) g.companions.update(dt, g.player.pos, g.director);
+  const met = g.dex.metCount();
+
+  // 무기를 휘둘러도 죽지 않는다(아동안전 하드룰)
+  g.hands.setWeapon(0);
+  for (let i = 0; i < 10; i++) { g.player.weaponCd = 0; g.attack(); }
+  g.enemies.damageArea(g.player.pos, 60, 9999);
+  const aliveAfterAttacks = g.companions.aliveCount();
+
+  // 놀란 상태가 풀릴 때까지 돌린다(무기를 휘두르면 뒤로 뛴다)
+  for (let i = 0; i < 40; i++) g.companions.update(dt, g.player.pos, g.director);
+
+  // 친구 되기 — 가까운 한 마리에게 간식을 준다
+  const target = g.companions.list.find((c) => c.alive);
+  target.pos.set(g.player.pos.x + 3, target.pos.y, g.player.pos.z + 2);
+  target.home.copy(target.pos);
+  g.companions.update(dt, g.player.pos, g.director);
+  g.player.score = 0;
+  const poor = g.companions.befriend(g.player);
+  g.player.score = 400;
+  const ok = g.companions.befriend(g.player);
+  await wait(120);
+
+  return {
+    total: species.length, uniqueNames: names.size, plans: plans.size,
+    emptyGeometry, tris: Math.round(tris), alive, aliveAfterAttacks, met,
+    poor, ok,
+    friends: g.dex.friendCount(),
+    follower: g.companions.follower ? g.companions.follower.sp.name : null,
+    prompt: g.companions.prompt(g.player),
+    stored: Number(window.LEGO.Storage._memory['brickdex-friend-0']) > 0,
+  };
+});
+if (creatures.total < 36 || creatures.uniqueNames !== creatures.total || creatures.plans < 6) {
+  throw new Error('브릭 생물 표가 모자라다: ' + JSON.stringify(creatures));
+}
+if (creatures.emptyGeometry !== 0) {
+  throw new Error('모양이 비어 있는 종이 있다: ' + JSON.stringify(creatures));
+}
+if (creatures.alive !== 7 || creatures.aliveAfterAttacks !== creatures.alive) {
+  throw new Error('생물 풀 상한 또는 무적 계약 실패(생물은 공격 대상이 아니다): ' + JSON.stringify(creatures));
+}
+if (creatures.met < 1 || creatures.poor !== 'poor' || creatures.ok !== 'friend' ||
+    creatures.friends !== 1 || !creatures.follower || !creatures.stored) {
+  throw new Error('도감 기록/친구 되기 실패: ' + JSON.stringify(creatures));
+}
+console.log('브릭 도감 확인:', JSON.stringify(creatures));
+await page.screenshot({ path: resolve(outDir, '09-creatures.png') });
+
+// (6) 도감 화면이 열리고 36칸이 그려진다
+const dexScreen = await page.evaluate(() => {
+  const g = window.LEGO_GAME;
+  g.dex.show(true);
+  g.hud.showDex(true);
+  const screen = document.getElementById('dex-screen');
+  return {
+    open: !screen.classList.contains('hidden'),
+    cells: screen.querySelectorAll('.dex-cell').length,
+    metCells: screen.querySelectorAll('.dex-cell.met').length,
+    friendCells: screen.querySelectorAll('.dex-cell.friend').length,
+  };
+});
+if (!dexScreen.open || dexScreen.cells !== creatures.total || dexScreen.friendCells < 1) {
+  throw new Error('도감 화면 실패: ' + JSON.stringify(dexScreen));
+}
+console.log('도감 화면 확인:', JSON.stringify(dexScreen));
+await page.screenshot({ path: resolve(outDir, '10-dex.png') });
+await page.evaluate(() => { const g = window.LEGO_GAME; g.dex.show(false); g.hud.showDex(false); });
+
+// (7) 생물이 상한까지 나와 있어도 렌더 예산 안에 있어야 한다
+const withCreatures = await page.evaluate(async () => {
+  const g = window.LEGO_GAME;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const at = new THREE.Vector3();
+  const species = window.LEGO.Creatures.SPECIES;
+  g.companions.clear();
+  for (let i = 0; i < 7; i++) {
+    at.set(g.player.pos.x - 12 + i * 4, 0, g.player.pos.z - 12);
+    g.companions.spawnAt(species[i * 5 % species.length], at);
+  }
+  for (const t of ['slime', 'golem', 'bat']) {
+    at.set(g.player.pos.x + 6, 0, g.player.pos.z - 20);
+    g.enemies.spawnAt(t, at, { level: 1 });
+  }
+  await wait(200);
+  const r = g.renderer;
+  r.info.autoReset = false;
+  r.info.reset();
+  g.post.renderWorld(g.scene);
+  r.clearDepth();
+  r.render(g.hands.scene, g.hands.camera);
+  const out = { calls: r.info.render.calls, triangles: r.info.render.triangles, creatures: g.companions.aliveCount() };
+  r.info.autoReset = true;
+  g.companions.clear();
+  g.enemies.clear();
+  return out;
+});
+if (withCreatures.calls > MAX_DRAWCALLS || withCreatures.triangles > MAX_TRIANGLES) {
+  throw new Error('생물·몬스터를 다 세운 프레임이 예산을 넘었다: ' + JSON.stringify(withCreatures));
+}
+console.log('생물 포함 렌더 예산 확인:', JSON.stringify(withCreatures));
+
 // 스폰 지점으로 되돌려 이후 검사를 깨끗한 상태에서 이어간다
 await page.evaluate(() => { window.LEGO_GAME.start(); });
 await page.waitForTimeout(150);
@@ -449,14 +588,23 @@ const storageFlow = await denied.evaluate(() => {
   g.start();
   g.player.score = 321;
   g.recordBest();
+  // 도감도 저장소가 막힌 채로 기록돼야 한다(메모리 fallback)
+  const sp = window.LEGO.Creatures.SPECIES[0];
+  g.dex.markFriend(sp);
   return {
     state: g.state,
     best: g.best,
     memory: window.LEGO.Storage._memory['brickcity-best'],
+    dexMet: g.dex.metCount(),
+    dexFriend: g.dex.friendCount(),
+    dexMemory: window.LEGO.Storage._memory['brickdex-friend-0'],
   };
 });
 if (storageFlow.state !== 'playing' || storageFlow.best !== 321 || storageFlow.memory !== '321') {
   throw new Error('저장소 차단 fallback 실패: ' + JSON.stringify(storageFlow));
+}
+if (storageFlow.dexMet < 1 || storageFlow.dexFriend !== 1 || storageFlow.dexMemory !== '1') {
+  throw new Error('저장소 차단 시 도감 fallback 실패: ' + JSON.stringify(storageFlow));
 }
 if (deniedErrors.length) {
   throw new Error('저장소 차단 페이지 오류: ' + deniedErrors.join(' | '));

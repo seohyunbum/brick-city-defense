@@ -46,6 +46,10 @@
         <div class="label">모은 브릭</div>
         <div class="value" id="score-value">0</div>
       </div>
+      <div class="panel" id="dex-panel">
+        <div class="label">도감 (T)</div>
+        <div class="value" id="dex-value">0 / 36</div>
+      </div>
       <div class="panel" id="combo-panel">
         <div class="label">연속</div>
         <div class="value" id="combo-value">0</div>
@@ -58,6 +62,7 @@
     </div>
 
     <div id="toast"></div>
+    <div id="interact-prompt" class="hidden"></div>
 
     <div id="vitals">
       <div id="hearts"></div>
@@ -118,7 +123,10 @@
       </div>
 
       <button id="start-btn">게임 시작</button>
-      <p class="tip">스터드(노란 알맹이)를 주우면 마나가, 파란 알맹이는 총알과 폭탄이 채워진다.<br />
+      <p class="tip"><b>📖 브릭 도감</b> — 도시에는 브릭 생물 36종이 산다. 가까이 가면 도감에 적히고,
+        <b>F</b> 로 간식을 주면 친구가 되어 따라온다. 생물은 싸우는 상대가 아니다.
+        <b>T</b> 로 도감을 열어 볼 수 있다.<br />
+        스터드(노란 알맹이)를 주우면 마나가, 파란 알맹이는 총알과 폭탄이 채워진다.<br />
         광장·학교·놀이터·경찰서·소방서는 안전지대라 몬스터가 오지 않는다.
         도시 밖으로 멀리 갈수록 위험해지고, 크레인과 항구에는 구역의 주인이 산다.
         쓰러져도 게임은 끝나지 않는다 — 잠깐 쉬었다 다시 걸으면 된다.</p>
@@ -136,6 +144,19 @@
     </div>
   </div>
 
+  <!-- ================= 브릭 도감 ================= -->
+  <div id="dex-screen" class="screen hidden">
+    <div class="sheet dex-sheet">
+      <h2>📖 브릭 도감</h2>
+      <p class="sub dex-count">만난 생물 0 / 36</p>
+      <p class="sub dex-help">도시를 돌아다니면 브릭 생물이 도감에 저절로 적힌다.
+        가까이 가서 <b>F</b> 를 누르고 모은 브릭으로 간식을 주면 친구가 되어 따라온다.
+        생물은 절대 다치지 않고, 너를 공격하지도 않는다.</p>
+      <div class="dex-grid"></div>
+      <button id="dex-close-btn">닫기 (T)</button>
+    </div>
+  </div>
+
   <!-- ================= 폰 터치 조작 ================= -->
   <div id="touch" class="hidden">
     <div id="stick"><div id="stick-knob"></div></div>
@@ -146,6 +167,8 @@
     <div id="touch-swap">
       <button id="btn-swap-weapon" class="tbtn small">무기 ▸</button>
       <button id="btn-swap-skill" class="tbtn small">두루마리 ▸</button>
+      <button id="btn-friend" class="tbtn small">🤝 친구</button>
+      <button id="btn-dex" class="tbtn small">📖 도감</button>
     </div>
   </div>
 </div>
@@ -166,12 +189,17 @@
 <script src="./src/postfx.js"></script>
 <script src="./src/fx.js"></script>
 <script src="./src/enemies.js"></script>
+<script src="./src/creatures.js"></script>
+<script src="./src/creature-mesh.js"></script>
+<script src="./src/dex.js"></script>
+<script src="./src/companions.js"></script>
 <script src="./src/objectives.js"></script>
 <script src="./src/progression.js"></script>
 <script src="./src/director.js"></script>
 <script src="./src/audio.js"></script>
 <script src="./src/hud.js"></script>
 <script src="./src/input.js"></script>
+<script src="./src/combat.js"></script>
 <script src="./src/game.js"></script>
 </body>
 </html>

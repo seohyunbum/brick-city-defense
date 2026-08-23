@@ -572,5 +572,38 @@
   }
 
   L.resolveCollision = resolveCollision;
-  L.World = { create, buildChunk };   // buildChunk 는 예산 계측 하네스용 seam
+  /**
+   * 플레이어 주변 도로 위의 빈 자리를 하나 고른다(스폰 공용 헬퍼).
+   *
+   * 건물 안에 몬스터·생물을 낳지 않으려고 가까운 도로 중심선으로 붙인 뒤
+   * 콜라이더 여유를 확인한다. 못 찾으면 null — 부르는 쪽이 다음 틱에 다시 시도한다.
+   * director.js(몬스터)와 companions.js(브릭 생물)가 같은 규칙을 쓴다.
+   */
+  function pickRoadPoint(world, px, pz, minD, maxD, out, clearance) {
+    const need = clearance === undefined ? 3.4 : clearance;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = minD + Math.random() * (maxD - minD);
+      let x = px + Math.cos(a) * d;
+      let z = pz + Math.sin(a) * d;
+      // 도로는 부지 경계(x = k*LOT, z = k*LOT) 위에 있다 — 가까운 쪽 중심선으로 스냅
+      const nx = Math.round(x / LOT) * LOT;
+      const nz = Math.round(z / LOT) * LOT;
+      if (Math.abs(x - nx) < Math.abs(z - nz)) x = nx; else z = nz;
+      out.set(x, world.curbY, z);
+      world.clamp(out);
+      if (Math.abs(out.x - px) < minD * 0.5 && Math.abs(out.z - pz) < minD * 0.5) continue;
+      const cols = world.collidersNear(out.x, out.z);
+      let gap = Infinity;
+      for (let i = 0; i < cols.length; i++) {
+        const o = cols[i];
+        const g = Math.max(Math.abs(out.x - o.x) - o.hx, Math.abs(out.z - o.z) - o.hz);
+        if (g < gap) gap = g;
+      }
+      if (gap > need) return out;
+    }
+    return null;
+  }
+
+  L.World = { create, buildChunk, pickRoadPoint };   // buildChunk 는 예산 계측 하네스용 seam
 })(window.LEGO);

@@ -243,6 +243,39 @@ button:focus-visible { outline: 4px solid #fff; outline-offset: 4px; }
 }
 .result b { color: var(--lego-yellow); }
 
+/* ------------------------------------------------------------- 브릭 도감 */
+#hud.dimmed { opacity: 0.18; }
+#dex-panel .value { color: var(--lego-green); }
+
+#interact-prompt {
+  position: fixed; left: 50%; bottom: 208px; transform: translateX(-50%);
+  max-width: min(560px, 92vw); text-align: center; white-space: pre-line;
+  background: rgba(14, 24, 32, 0.86); border: 2px solid var(--lego-yellow);
+  border-radius: 14px; padding: 8px 16px; font-size: 15px; font-weight: 700;
+  pointer-events: none; z-index: 11;
+}
+
+.dex-sheet { width: min(1020px, 96vw); }
+.dex-help { font-size: 13px; line-height: 1.6; margin-bottom: 14px; }
+.dex-count { font-size: 17px; font-weight: 800; color: var(--lego-yellow); margin-bottom: 6px; }
+.dex-grid {
+  display: grid; gap: 8px; text-align: left;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  max-height: min(56vh, 520px); overflow-y: auto; padding: 2px;
+}
+.dex-cell {
+  background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px; padding: 8px 10px; min-height: 92px;
+}
+.dex-cell.met { background: rgba(255, 255, 255, 0.1); border-color: rgba(242, 205, 55, 0.55); }
+.dex-cell.friend { border-color: var(--lego-green); box-shadow: inset 0 0 0 2px rgba(75, 159, 74, 0.35); }
+.dex-no { font-size: 11px; opacity: 0.6; letter-spacing: 1px; }
+.dex-icon { font-size: 20px; line-height: 1.2; }
+.dex-cell:not(.met) .dex-icon { filter: grayscale(1); opacity: 0.35; }
+.dex-name { font-size: 15px; font-weight: 800; }
+.dex-type { font-size: 11px; opacity: 0.75; }
+.dex-note { font-size: 11px; opacity: 0.7; line-height: 1.45; margin-top: 3px; }
+
 /* ------------------------------------------------------------- 터치 조작 */
   min-height: 170px; margin: 0; padding: 18px 14px; color: #fff; background: rgba(255, 255, 255, 0.08);
   border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: none;
@@ -285,4 +318,6 @@ button:focus-visible { outline: 4px solid #fff; outline-offset: 4px; }
   #objective-bar { top: 76px; width: calc(100vw - 18px); gap: 6px; }
   .objective-panel { min-width: 0; flex: 1; padding: 6px 8px; font-size: 12px; }
   #boss-bar { top: 132px; }
+  #interact-prompt { bottom: 250px; font-size: 13px; }
+  .dex-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
 }

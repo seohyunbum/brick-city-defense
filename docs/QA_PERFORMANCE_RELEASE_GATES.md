@@ -12,7 +12,12 @@
 
 `npm run verify:static`은 필수 문서, 공개 브랜드/URL, CDN·네트워크 API, package lock, Action SHA, 자산 등록/SHA/license/NOTICE, 미등록 binary, runtime payload, 직접 색상 ratchet, 과대 모듈 증가를 검사한다.
 
-`npm run smoke`는 file origin 부팅, console/page error 0, 화면, 무기·스킬, 실제 키 이동, 웨이브 전이, 게임오버/재시작, 저장 차단 fallback, 오디오 voice cap, 실제 world+postfx+hands 패스의 draw calls/triangles를 검사한다.
+`npm run smoke`는 file origin 부팅, console/page error 0, 화면, 무기·스킬, 실제 키 이동, 자유 이동·청크 스트리밍, 안전지대 평화, 위험 구역 서식, 게임오버 없음, 브릭 도감(생물 36종 모양·무적·기록·도감 화면), 저장 차단 fallback(점수와 도감 양쪽), 오디오 voice cap, 실제 world+postfx+hands 패스의 draw calls/triangles를 검사한다.
+
+브릭 도감 검사는 세 가지를 따로 본다. ① 36종 전부 병합 지오메트리 3개가 비어 있지 않다.
+② 무기 10회와 범위 피해 9999 이후에도 마릿수가 그대로다(생물은 공격 대상이 아니다 — `CLAUDE.md §5`).
+③ 생물 7 + 몬스터 3 을 한 화면에 세운 프레임이 드로우콜 650 / 삼각형 125,000 예산 안에 있다
+(최근 실측 110 / 56,936).
 
 현재 hard cap:
 

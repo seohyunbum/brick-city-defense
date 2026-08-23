@@ -14,6 +14,8 @@
       district: el('district-value'),
       threat: el('threat-value'),
       score: el('score-value'),
+      dex: el('dex-value'),
+      prompt: el('interact-prompt'),
       combo: el('combo-value'),
       comboPanel: el('combo-panel'),
       hearts: el('hearts'),
@@ -66,6 +68,12 @@
     this.dom.touch.classList.toggle('hidden', !visible);
   };
 
+  /** 도감을 펼치면 HUD 를 눌러 둔다 — 글자가 겹쳐 읽기 어려워지지 않게 */
+  HUD.prototype.showDex = function (visible) {
+    this.dom.hud.classList.toggle('dimmed', !!visible);
+    if (visible && this.dom.prompt) this.dom.prompt.classList.add('hidden');
+  };
+
   /** 매 프레임 갱신 (state = game 이 넘겨주는 값 묶음) */
   const COMPASS = ['북', '북서', '서', '남서', '남', '남동', '동', '북동'];
 
@@ -88,6 +96,17 @@
       this.dom.district.textContent = s.district || '브릭 시티';
     }
     this.dom.score.textContent = s.score;
+
+    // 브릭 도감 진행도와 "F 로 친구 되기" 안내
+    if (this.dom.dex && s.dexTotal) {
+      const dexText = s.dexMet + ' / ' + s.dexTotal;
+      if (dexText !== this._lastDex) { this._lastDex = dexText; this.dom.dex.textContent = dexText; }
+    }
+    if (this.dom.prompt && s.prompt !== this._lastPrompt) {
+      this._lastPrompt = s.prompt;
+      this.dom.prompt.textContent = s.prompt || '';
+      this.dom.prompt.classList.toggle('hidden', !s.prompt);
+    }
     this.dom.combo.textContent = s.combo > 1 ? ('x' + s.combo) : '0';
 
     // 위협 — 지금 구역이 안전한지, 얼마나 센 몬스터가 사는지 한눈에
