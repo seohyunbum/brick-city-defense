@@ -83,33 +83,9 @@
     return '위험 ' + this.level;
   };
 
-  /**
-   * 도로 위 한 점을 고른다. 건물 안에 몬스터를 낳지 않으려고
-   * 가까운 도로 중심선으로 붙인 뒤 콜라이더 여유를 확인한다.
-   */
+  /** 도로 위 한 점을 고른다 — 규칙은 world.js 의 공용 헬퍼가 들고 있다 */
   Director.prototype._pickSpawn = function (px, pz, out) {
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const a = Math.random() * Math.PI * 2;
-      const d = SPAWN_MIN + Math.random() * (SPAWN_MAX - SPAWN_MIN);
-      let x = px + Math.cos(a) * d;
-      let z = pz + Math.sin(a) * d;
-      // 가까운 쪽 도로 중심선으로 스냅 (도로는 부지 경계 x=k*LOT, z=k*LOT 위에 있다)
-      const nx = Math.round(x / LOT) * LOT;
-      const nz = Math.round(z / LOT) * LOT;
-      if (Math.abs(x - nx) < Math.abs(z - nz)) x = nx; else z = nz;
-      out.set(x, this.world.curbY, z);
-      this.world.clamp(out);
-      if (Math.abs(out.x - px) < SPAWN_MIN * 0.5 && Math.abs(out.z - pz) < SPAWN_MIN * 0.5) continue;
-      const cols = this.world.collidersNear(out.x, out.z);
-      let gap = Infinity;
-      for (let i = 0; i < cols.length; i++) {
-        const o = cols[i];
-        const g = Math.max(Math.abs(out.x - o.x) - o.hx, Math.abs(out.z - o.z) - o.hz);
-        if (g < gap) gap = g;
-      }
-      if (gap > 3.4) return out;
-    }
-    return null;
+    return L.World.pickRoadPoint(this.world, px, pz, SPAWN_MIN, SPAWN_MAX, out);
   };
 
   Director.prototype._pickType = function (profile) {

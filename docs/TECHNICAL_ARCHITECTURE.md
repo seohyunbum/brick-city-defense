@@ -27,7 +27,12 @@
 | `fx.js` | 발사체·파편·스터드 pool | 초과 보상 즉시 지급·overflow/lost 계측 반영 |
 | `enemies.js` | 적 factory·역할별 타깃·AI·웨이브 | 조우 데이터와 실행 분리 필요 |
 | `audio.js` | 합성 SFX | noise cache/voice cap 반영, BGM bus 없음 |
-| `storage.js` | 점수 저장과 차단 fallback | 신규 경계 adapter |
+| `storage.js` | 점수·도감 저장과 차단 fallback | 신규 경계 adapter |
+| `combat.js` | 무기·두루마리 규칙(game.js 에서 추출) | 신규. `game.js` 579 → 477줄 |
+| `creatures.js` | 브릭 생물 36종 정본 표 | 신규 SSOT |
+| `creature-mesh.js` | 생물 병합 지오메트리 순수 팩토리 | 신규. 마리당 드로우콜 3 |
+| `companions.js` | 생물 행동·정원·친구 되기 | 신규. 피해 경로 없음(하드룰) |
+| `dex.js` | 도감 기록(비트마스크)과 도감 화면 | 신규 |
 
 현재 코드의 전역 `window.LEGO`/`window.LEGO_GAME`은 레거시 기술 namespace다. 공개 브랜드는 브릭 시티이며 신규 API는 `window.BRICK_GAME` alias를 사용한다. namespace 전체 교체는 기능 변경과 분리한 refactor에서 수행한다.
 
@@ -61,6 +66,7 @@ system은 HUD DOM이나 구체 mesh를 직접 만지지 않고 event/data를 반
 
 - 전투 수치: `src/loadout.js`
 - 적 archetype·웨이브: 향후 `src/encounter-data.js`
+- 브릭 생물(도감): `src/creatures.js` — 이름·속성·몸 구성·간식·서식 구역 전부 이 표 하나
 - 팔레트·재질 token: `src/bricks.js`
 - 설정 schema: 향후 `src/settings.js`, version 포함
 - 외부 자산: `assets/third-party-assets.json`

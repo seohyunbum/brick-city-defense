@@ -21,6 +21,7 @@
       selectWeapon: null, selectSkill: null,
       swapWeapon: null, swapSkill: null,
       pause: null, resume: null,
+      interact: null, toggleDex: null,
     };
     this._bindKeyboard();
     this._bindMouse();
@@ -38,6 +39,11 @@
       }
       for (let i = 0; i < L.SKILLS.length; i++) {
         if (e.code === 'Digit' + L.SKILLS[i].key && self.hooks.selectSkill) self.hooks.selectSkill(i);
+      }
+      if (e.code === 'KeyF' && self.hooks.interact) self.hooks.interact();
+      if ((e.code === 'KeyT' || e.code === 'Tab') && self.hooks.toggleDex) {
+        self.hooks.toggleDex();
+        e.preventDefault();
       }
       if (e.code === 'KeyQ' && self.hooks.swapWeapon) self.hooks.swapWeapon(1);
       if (e.code === 'KeyE' && self.hooks.swapSkill) self.hooks.swapSkill(1);
@@ -179,6 +185,10 @@
 
     const bw = document.getElementById('btn-swap-weapon');
     const bs = document.getElementById('btn-swap-skill');
+    const bf = document.getElementById('btn-friend');
+    const bd = document.getElementById('btn-dex');
+    if (bf) bf.addEventListener('click', () => self.hooks.interact && self.hooks.interact());
+    if (bd) bd.addEventListener('click', () => self.hooks.toggleDex && self.hooks.toggleDex());
     if (bw) bw.addEventListener('click', () => self.hooks.swapWeapon && self.hooks.swapWeapon(1));
     if (bs) bs.addEventListener('click', () => self.hooks.swapSkill && self.hooks.swapSkill(1));
   };

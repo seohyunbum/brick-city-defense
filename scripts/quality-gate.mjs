@@ -57,6 +57,11 @@ const roundedScript = index.indexOf('./src/rounded-box.js');
 const bricksScript = index.indexOf('./src/bricks.js');
 const lookdevScript = index.indexOf('./src/lookdev.js');
 const objectiveScript = index.indexOf('./src/objectives.js');
+const creatureScript = index.indexOf('./src/creatures.js');
+const creatureMeshScript = index.indexOf('./src/creature-mesh.js');
+const dexScript = index.indexOf('./src/dex.js');
+const companionScript = index.indexOf('./src/companions.js');
+const combatScript = index.indexOf('./src/combat.js');
 const progressionScript = index.indexOf('./src/progression.js');
 const gameScript = index.indexOf('./src/game.js');
 if (objectiveScript < 0 || progressionScript < 0 || gameScript < 0 ||
@@ -66,6 +71,13 @@ if (objectiveScript < 0 || progressionScript < 0 || gameScript < 0 ||
 if (roundedScript < 0 || bricksScript < 0 || lookdevScript < 0 || roundedScript > bricksScript || bricksScript > lookdevScript) {
   fail('RoundedBox/Bricks/LookDev 모듈 로드 순서 불일치');
 }
+// 브릭 도감: 표 → 모양 → 기록 → 행동 순서로 실려야 한다(뒤집히면 부팅에서 죽는다)
+if (creatureScript < 0 || creatureMeshScript < 0 || dexScript < 0 || companionScript < 0 ||
+    creatureScript > creatureMeshScript || creatureMeshScript > dexScript ||
+    dexScript > companionScript || companionScript > gameScript) {
+  fail('Creatures/CreatureMesh/Dex/Companions 모듈 로드 순서 불일치');
+}
+if (combatScript < 0 || combatScript > gameScript) fail('Combat 모듈이 game.js 뒤에 실렸다');
 if (!index.includes('https://seohyunbum.github.io/brick-city-defense/')) fail('canonical Pages URL 불일치');
 if (/<script[^>]+src=["']https?:/iu.test(index) || /@import\s+url\(["']?https?:/iu.test(read('src/style.css'))) {
   fail('CDN 또는 원격 런타임 의존성 발견');
@@ -81,6 +93,16 @@ if (/\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/u.test(runtimeC
 }
 if (read('src/fx.js').includes('if (!s) return;')) {
   fail('수집품 풀이 가득 찰 때 보상을 조용히 유실하는 코드 발견');
+}
+
+// 아동안전 하드룰(CLAUDE.md 5장): 브릭 생물은 공격 대상이 아니다.
+// 생물 런타임에 피해·죽음 경로가 생기면 여기서 막는다.
+const companionCode = read('src/companions.js') + read('src/creature-mesh.js') + read('src/creatures.js');
+if (/\b(damage|kill|hp|attack)\b/iu.test(companionCode)) {
+  fail('브릭 생물 코드에 피해/죽음 경로가 들어왔다 — 생물은 공격 대상이 될 수 없다');
+}
+if (!read('src/enemies.js').includes('L.Enemies') || read('src/enemies.js').includes('Creatures')) {
+  fail('몬스터 모듈이 브릭 생물 표를 참조한다 — 생물이 상대로 쓰일 수 있다');
 }
 
 const packageJson = JSON.parse(read('package.json'));
@@ -149,7 +171,13 @@ for (const path of walk('src').filter((value) => value.endsWith('.js') && value 
 if (rawColorCount > 64) fail(`팔레트 밖 직접 색상 증가: ${rawColorCount} > 64`);
 
 // 과대 모듈 래칫 — 현재 줄 수로 잠근다. city.js(복도 도시)는 world.js 로 대체돼 삭제됐다.
-const lineLimit = { 'src/game.js': 579, 'src/objectives.js': 89, 'src/progression.js': 39, 'src/director.js': 216, 'src/props.js': 183, 'src/enemies.js': 484 };
+// game.js 는 전투를 combat.js 로 뽑아내며 579 → 477 으로 내려갔다. 래칫은 내려간 값으로 다시 잠근다.
+const lineLimit = {
+  'src/game.js': 477, 'src/objectives.js': 89, 'src/progression.js': 39,
+  'src/director.js': 192, 'src/props.js': 183, 'src/enemies.js': 484,
+  'src/combat.js': 150, 'src/creatures.js': 265, 'src/creature-mesh.js': 335,
+  'src/dex.js': 180, 'src/companions.js': 370,
+};
 for (const [path, limit] of Object.entries(lineLimit)) {
   const lines = read(path).split(/\r?\n/u).length - 1;
   if (lines > limit) fail(`과대 모듈 증가: ${path} ${lines}줄 > ${limit}`);
