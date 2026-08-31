@@ -1,5 +1,6 @@
 /* =========================================================================
- * game.js — 지휘자: 씬 부팅 · 입력 배선 · 전투 규칙 · 루프 · 렌더
+ * game.js — 지휘자: 씬 부팅 · 입력 배선 · 흐름 전이 · 루프 · 렌더
+ * 이동은 player.js, 조준·공격·시전은 combat.js 가 prototype mixin 으로 붙는다.
  *
  * 렌더는 2패스다.
  *   1) 도시(월드) 씬
@@ -102,6 +103,9 @@
     this._loop = this._loop.bind(this);
     requestAnimationFrame(this._loop);
   }
+
+  // 이동·전투 규칙은 별도 파일에서 붙인다(같은 Game 인스턴스를 this 로 받는다)
+  Object.assign(Game.prototype, L.PlayerController, L.Combat);
 
   // ------------------------------------------------------------------ 배선
   Game.prototype._wire = function () {
@@ -246,171 +250,6 @@
     if (win) this.sfx.wave(); else this.sfx.gameOver();
   };
 
-  // ------------------------------------------------------------------ 전투
-  /** 카메라가 보는 방향 (정규화, 스크래치 재사용) */
-  Game.prototype.aimDir = function () {
-    return this.camera.getWorldDirection(this._dir);
-  };
-
-  /** 조준선이 땅에 닿는 지점(메테오 목표) */
-  Game.prototype.aimGround = function (out) {
-    const dir = this.aimDir();
-    const p = this.player.pos;
-    const groundY = this.city.curbY;
-    if (dir.y < -0.06) {
-      const t = Math.min(150, (p.y - groundY) / -dir.y);
-      out.set(p.x + dir.x * t, groundY, p.z + dir.z * t);
-    } else {
-      out.set(p.x + dir.x * 60, groundY, p.z + dir.z * 60);
-    }
-    return out;
-  };
-
-  /** 오른손 공격 */
-  Game.prototype.attack = function () {
-    const p = this.player;
-    const w = this.hands.currentWeapon();
-    if (p.weaponCd > 0) return;
-    if (w.ammoMax !== undefined && (p.ammo[w.id] || 0) <= 0) {
-      this.hud.toast('탄약 없음! 파란 스터드를 주워라', 1.0);
-      p.weaponCd = 0.4;
-      return;
-    }
-    p.weaponCd = w.cooldown;
-    this.hands.playAttack();
-    const dir = this.aimDir();
-
-    if (w.id === 'sword') {
-      this.sfx.sword();
-      const hits = this.enemies.damageCone(p.pos, dir, w.reach, Math.cos(w.arc), w.damage);
-      if (hits) {
-        this.hud.hitMark();
-        this._tmp.copy(p.pos).addScaledVector(dir, 6);
-        this.fx.debrisBurst(this._tmp, L.COLORS.silver, 3, 8);
-      }
-    } else if (w.id === 'blaster') {
-      p.ammo.blaster--;
-      this.sfx.shoot();
-      this.hands.getMuzzleWorld(this._tmp);
-      this.fx.shoot('stud', this._tmp, dir, {
-        speed: w.speed, dmg: w.damage, life: 1.8, spin: 6,
-      });
-    } else if (w.id === 'bomb') {
-      p.ammo.bomb--;
-      this.sfx.throwBomb();
-      this.hands.getMuzzleWorld(this._tmp);
-      this.fx.shoot('bomb', this._tmp, dir, {
-        speed: w.speed, dmg: w.damage, radius: w.radius, gravity: 62,
-        fuse: w.fuse, life: w.fuse + 0.1, up: 12, spin: 3,
-      });
-    }
-  };
-
-  /** 왼손 두루마리 시전 */
-  Game.prototype.cast = function () {
-    const p = this.player;
-    const s = this.hands.currentSkill();
-    if (this.skillCd[s.id] > 0 || p.channelTimer > 0) return;
-    if (p.mana < s.mana) {
-      this.hud.toast('마나 부족! 노란 스터드를 주워라', 1.0);
-      this.skillCd[s.id] = 0.35;
-      return;
-    }
-    p.mana -= s.mana;
-    this.skillCd[s.id] = s.cooldown;
-    this.sfx.cast();
-    const dir = this.aimDir();
-
-    if (s.id === 'fireball') {
-      this.hands.playCast(0);
-      this.hands.getScrollWorld(this._tmp);
-      this.fx.shoot('fireball', this._tmp, dir, {
-        speed: s.speed, dmg: s.damage, radius: s.radius, life: 3.2,
-      });
-    } else if (s.id === 'meteor') {
-      this.hands.playCast(0);
-      this.aimGround(this._aim);
-      this.fx.meteor(this._aim, s);
-      this.hud.toast('☄️ 메테오!', 0.9);
-    } else if (s.id === 'dragonfire') {
-      this.hands.playCast(s.duration);
-      p.channelTimer = s.duration;
-      p.channelSkill = s;
-      this.hud.toast('🐲 드래곤 파이어!', 0.9);
-    }
-  };
-
-  /** 드래곤 파이어 유지 시전 처리 */
-  Game.prototype.updateChannel = function (dt) {
-    const p = this.player;
-    if (p.channelTimer <= 0) return;
-    const s = p.channelSkill;
-    p.channelTimer -= dt;
-    const dir = this.aimDir();
-    this.hands.getScrollWorld(this._tmp);
-    this._tmp.addScaledVector(dir, 3.5);   // 조금 앞에서 뿜어 시야를 덜 가린다
-    // 불꽃 분사
-    for (let i = 0; i < 4; i++) this.fx.flame(this._tmp, dir, 0.22);
-    if (Math.random() < 0.35) this.sfx.flame();
-    // 부채꼴 지속 피해
-    const hits = this.enemies.damageCone(p.pos, dir, s.range, Math.cos(s.cone), s.dps * dt);
-    if (hits) this.hud.hitMark();
-    if (p.channelTimer <= 0) { p.channelTimer = 0; p.channelSkill = null; }
-  };
-
-  // ------------------------------------------------------------------ 이동
-  Game.prototype.updatePlayer = function (dt) {
-    const p = this.player;
-    const inp = this.input;
-    inp.sample();
-    const look = inp.consumeLook(this._look);
-    p.yaw += look.yaw;
-    p.pitch = Math.max(-1.15, Math.min(0.95, p.pitch + look.pitch));
-
-    // 이동(카메라 기준)
-    let mx = inp.moveX, mz = inp.moveZ;
-    const len = Math.hypot(mx, mz);
-    if (len > 1) { mx /= len; mz /= len; }
-    const speed = (inp.sprint ? P.sprintSpeed : P.walkSpeed) * (p.channelTimer > 0 ? 0.55 : 1);
-    const sin = Math.sin(p.yaw), cos = Math.cos(p.yaw);
-    // yaw 0 일 때 앞 = -Z  (앞 = (-sin, -cos), 오른쪽 = (cos, -sin))
-    const vx = (mx * cos - mz * sin) * speed * dt;
-    const vz = (-mz * cos - mx * sin) * speed * dt;
-    p.pos.x += vx;
-    p.pos.z += vz;
-
-    // 도시 충돌 + 경계
-    L.resolveCollision(p.pos, 2.0, this.city.colliders);
-    const b = this.city.bounds;
-    p.pos.x = Math.max(b.minX, Math.min(b.maxX, p.pos.x));
-    p.pos.z = Math.max(b.minZ, Math.min(b.maxZ, p.pos.z));
-
-    // 걸을 때 시선 흔들림
-    const moving = len > 0.05;
-    p.bob += dt * (moving ? (inp.sprint ? 13 : 9) : 2.2);
-    const bobY = moving ? Math.sin(p.bob) * (inp.sprint ? 0.22 : 0.14) : Math.sin(p.bob) * 0.04;
-    p.pos.y = P.eyeHeight + this.city.curbY;
-
-    this.camera.position.set(p.pos.x, p.pos.y + bobY, p.pos.z);
-    this.camera.rotation.set(p.pitch, p.yaw, Math.sin(p.bob * 0.5) * (moving ? 0.012 : 0.003));
-
-    // 쿨다운·마나·콤보
-    if (p.weaponCd > 0) p.weaponCd -= dt;
-    for (const k in this.skillCd) if (this.skillCd[k] > 0) this.skillCd[k] -= dt;
-    if (p.invuln > 0) p.invuln -= dt;
-    p.mana = Math.min(P.maxMana, p.mana + P.manaRegen * dt);
-    if (p.comboTimer > 0) {
-      p.comboTimer -= dt;
-      if (p.comboTimer <= 0) p.combo = 0;
-    }
-
-    // 공격 입력(누르고 있으면 연사)
-    if (this.input.attackHeld) this.attack();
-    if (this.input.castHeld) this.cast();
-
-    return moving ? (inp.sprint ? 1 : 0.6) : 0;
-  };
-
   // ------------------------------------------------------------------ 도시 연출
   Game.prototype.updateCity = function (dt) {
     const a = this.city.anim;
@@ -471,25 +310,6 @@
       if (n.fig.position.z > 38) n.fig.position.z = 38;
       if (n.fig.position.z < -60) n.fig.position.z = -60;
     }
-  };
-
-  /** 조준선 앞에 있는 몬스터까지의 거리(없으면 0) — 접사 초점을 맞추는 데 쓴다 */
-  Game.prototype.aimDistance = function () {
-    const dir = this.aimDir();
-    const p = this.player.pos;
-    let best = 0, bestDot = 0.986;   // 화면 가운데 근처만
-    const list = this.enemies.list;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e.alive) continue;
-      this._tmp2.set(e.pos.x - p.x, (e.pos.y + e.radius * 0.6) - p.y, e.pos.z - p.z);
-      const d = this._tmp2.length();
-      if (d < 3) continue;
-      this._tmp2.divideScalar(d);
-      const dot = this._tmp2.dot(dir);
-      if (dot > bestDot) { bestDot = dot; best = d; }
-    }
-    return best;
   };
 
   // ------------------------------------------------------------------ 루프
