@@ -31,6 +31,11 @@
     const self = this;
     window.addEventListener('keydown', (e) => {
       if (e.repeat) { e.preventDefault(); return; }
+      // 시작·설정·일시정지·결과 화면이 열려 있으면 키를 버튼에 넘긴다(Escape 만 흐름 전환)
+      if (document.body.classList.contains('screen-open')) {
+        if (e.code === 'Escape' && self.hooks.pause) self.hooks.pause();
+        return;
+      }
       self.keys[e.code] = true;
       // 무기 1 2 3 / 두루마리 4 5 6
       for (let i = 0; i < L.WEAPONS.length; i++) {
@@ -54,6 +59,8 @@
     window.addEventListener('blur', () => {
       self.keys = Object.create(null);
       self.attackHeld = self.castHeld = false;
+      // Alt+Tab 처럼 창을 떠나면 자동으로 멈춘다(입력이 눌린 채 남지 않게)
+      if (self.hooks.pause) self.hooks.pause(true);
     });
   };
 

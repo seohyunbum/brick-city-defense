@@ -65,6 +65,20 @@
     pickupRange: 4.2,
   };
 
+  /** 난이도 표 — 설정 화면이 그대로 읽어 설명까지 만든다 */
+  const DIFFICULTY = {
+    normal: {
+      id: 'normal', name: '기본',
+      invulnScale: 1, manaRegenScale: 1, waveBreak: 4.2,
+      hint: '피격 후 무적 1.1초 · 마나 회복 기본 · 웨이브 사이 4.2초',
+    },
+    easy: {
+      id: 'easy', name: '쉬움',
+      invulnScale: 1.8, manaRegenScale: 1.4, waveBreak: 6.5,
+      hint: '피격 후 무적 2.0초 · 마나 회복 1.4배 · 웨이브 사이 6.5초',
+    },
+  };
+
   function byId(list, id) {
     for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
     return null;
@@ -73,6 +87,7 @@
   L.WEAPONS = WEAPONS;
   L.SKILLS = SKILLS;
   L.PLAYER = PLAYER;
+  L.DIFFICULTY = DIFFICULTY;
   L.weaponById = (id) => byId(WEAPONS, id);
   L.skillById = (id) => byId(SKILLS, id);
 })(window.LEGO);

@@ -41,9 +41,44 @@
     return write(key, Math.floor(number));
   }
 
+  function getString(key, fallback) {
+    const value = read(key);
+    return typeof value === 'string' ? value : (fallback === undefined ? null : fallback);
+  }
+
+  function setString(key, value) {
+    return write(key, value);
+  }
+
+  /** 저장된 JSON 을 읽는다. 없거나 손상됐으면 null 을 준다(호출자가 default 로 복구). */
+  function getJSON(key) {
+    const text = getString(key);
+    if (text === null) return null;
+    try {
+      const parsed = JSON.parse(text);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function setJSON(key, value) {
+    let text;
+    try {
+      text = JSON.stringify(value);
+    } catch (err) {
+      return false;
+    }
+    return write(key, text);
+  }
+
   L.Storage = {
     getNumber,
     setNumber,
+    getString,
+    setString,
+    getJSON,
+    setJSON,
     _memory: memory,
   };
 })(window.LEGO);

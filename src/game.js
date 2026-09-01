@@ -115,12 +115,14 @@
     h.selectSkill = (i) => { if (self.state === 'playing') { self.hands.setSkill(i); self.sfx.pop(); } };
     h.swapWeapon = (d) => { if (self.state === 'playing') { self.hands.nextWeapon(d); self.sfx.pop(); } };
     h.swapSkill = (d) => { if (self.state === 'playing') { self.hands.nextSkill(d); self.sfx.pop(); } };
+    // Escape(인자 없음)는 멈춤↔재개 토글. 포인터락 해제·창 이탈은 강제 멈춤만 한다.
     h.pause = (fromUnlock) => {
       if (self.state === 'playing') {
         self.state = 'pause';
         self.hud.screen('pause');
+      } else if (self.state === 'pause' && !fromUnlock) {
+        self.resume();
       }
-      void fromUnlock;
     };
 
     // 이펙트 → 게임 규칙 연결
@@ -148,8 +150,8 @@
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
-    // 좁은 화면(폰 세로)에서는 시야를 넓혀 손이 화면을 덜 가리게
-    this.camera.fov = w / h < 1 ? 82 : 70;
+    // 설정 FOV 를 쓰고, 좁은 화면(폰 세로)에서는 손이 덜 가리게 조금 넓힌다
+    this.camera.fov = L.Settings.fovFor(w / h);
     this.camera.updateProjectionMatrix();
     this.hands.resize(w / h, this.camera.fov);
     this.post.resize(w, h, this.renderer.getPixelRatio());
@@ -198,7 +200,7 @@
       return;
     }
     this.wave = n + 1;
-    this.waveBreak = 4.2;
+    this.waveBreak = L.Settings.difficulty().waveBreak;
     this.hud.toast('웨이브 ' + n + ' 클리어! 🎉\n다음 웨이브 준비', 2.6);
     this.sfx.wave();
     // 보상: 탄약·폭탄·마나 조금
@@ -223,7 +225,7 @@
     const p = this.player;
     if (this.state !== 'playing' || p.invuln > 0) return;
     p.hearts -= dmg;
-    p.invuln = P.hurtInvuln;
+    p.invuln = P.hurtInvuln * L.Settings.difficulty().invulnScale;
     p.combo = 0;
     this.hud.hurt();
     this.sfx.hurt();
@@ -423,29 +425,6 @@
     p.score += 5;
     this.sfx.pickup();
   };
-
-  // 부팅
-  window.addEventListener('DOMContentLoaded', () => {
-    try {
-      window.LEGO_GAME = new Game();
-      window.BRICK_GAME = window.LEGO_GAME;
-    } catch (err) {
-      console.error(err);
-      const s = document.getElementById('start-screen');
-      if (s) {
-        s.textContent = '';
-        const sheet = document.createElement('div');
-        sheet.className = 'sheet small';
-        const title = document.createElement('h2');
-        title.textContent = '게임을 시작할 수 없었다';
-        const detail = document.createElement('p');
-        detail.className = 'sub';
-        detail.textContent = String(err && err.message ? err.message : err);
-        sheet.append(title, detail);
-        s.appendChild(sheet);
-      }
-    }
-  });
 
   L.Game = Game;
 })(window.LEGO);

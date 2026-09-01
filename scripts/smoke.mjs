@@ -237,6 +237,152 @@ const info = await page.evaluate(() => {
 // CI software renderer에서 두 WebGL 게임을 동시에 돌리지 않는다.
 await page.close();
 
+// 설정: 키보드만으로 열고, 값이 실제 런타임에 적용되고 다시 열어도 남아 있는지 본다.
+const settingsErrors = [];
+const settingsPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+settingsPage.on('console', (m) => { if (m.type() === 'error') settingsErrors.push('console: ' + m.text()); });
+settingsPage.on('pageerror', (e) => settingsErrors.push('pageerror: ' + e.message));
+await settingsPage.goto('file://' + resolve(root, 'index.html'));
+await settingsPage.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 60000 });
+
+// 마우스 없이 Tab · Enter 만으로 설정 화면까지 간다
+await settingsPage.keyboard.press('Tab');
+await settingsPage.keyboard.press('Tab');
+const focusBefore = await settingsPage.evaluate(() => document.activeElement && document.activeElement.id);
+await settingsPage.keyboard.press('Enter');
+await settingsPage.waitForTimeout(150);
+const keyboardOpen = await settingsPage.evaluate(() => ({
+  open: window.LEGO.SettingsUI.isOpen(),
+  inSheet: !!(document.activeElement && document.activeElement.closest('#settings-screen')),
+  dialog: document.getElementById('settings-screen').getAttribute('role'),
+  startHidden: document.getElementById('start-screen').classList.contains('hidden'),
+}));
+if (focusBefore !== 'settings-btn' || !keyboardOpen.open || !keyboardOpen.inSheet) {
+  throw new Error('키보드만으로 설정을 열지 못했다: ' + focusBefore + ' ' + JSON.stringify(keyboardOpen));
+}
+await settingsPage.screenshot({ path: resolve(outDir, '08-settings.png') });
+
+// 값을 바꾸면 카메라 · 후처리 · 소리 · 난이도에 그대로 닿아야 한다
+const applied = await settingsPage.evaluate(() => {
+  const S = window.LEGO.Settings;
+  const g = window.LEGO_GAME;
+  S.set('uiScale', 150);
+  S.set('fov', 90);
+  S.set('sensitivity', 2);
+  S.set('reducedMotion', true);
+  S.set('quality', 'low');
+  S.set('difficulty', 'easy');
+  S.set('mute', true);
+  g.sfx.resume();
+  g.start();
+  g.player.invuln = 0;
+  g.hurtPlayer(1);
+  return {
+    uiScale: document.documentElement.style.getPropertyValue('--ui-scale'),
+    motion: document.documentElement.dataset.motion,
+    fov: Math.round(g.camera.fov),
+    aperture: g.post.material ? g.post.material.uniforms.uAperture.value : -1,
+    postEnabled: g.post.enabled,
+    autoQuality: g.autoQuality,
+    invuln: Number(g.player.invuln.toFixed(2)),
+    masterGain: g.sfx.master ? g.sfx.master.gain.value : -1,
+  };
+});
+// 쉬움 난이도의 피격 무적: PLAYER.hurtInvuln 1.1 × DIFFICULTY.easy.invulnScale 1.8
+const expectedInvuln = 1.98;
+if (applied.uiScale !== '1.50' || applied.motion !== 'reduced' || applied.fov !== 90) {
+  throw new Error('설정이 문서·카메라에 적용되지 않았다: ' + JSON.stringify(applied));
+}
+if (applied.aperture !== 0 || applied.postEnabled !== false || applied.autoQuality !== false) {
+  throw new Error('모션·품질 설정이 후처리에 적용되지 않았다: ' + JSON.stringify(applied));
+}
+if (applied.invuln !== expectedInvuln || applied.masterGain !== 0) {
+  throw new Error('난이도·음소거가 적용되지 않았다: ' + JSON.stringify(applied));
+}
+console.log('설정 적용 확인:', JSON.stringify(applied));
+
+// Escape 로 닫으면 원래 화면으로 돌아온다
+await settingsPage.evaluate(() => { window.LEGO_GAME.state = 'start'; window.LEGO.SettingsUI.open(); });
+await settingsPage.waitForTimeout(100);
+await settingsPage.keyboard.press('Escape');
+await settingsPage.waitForTimeout(150);
+const closed = await settingsPage.evaluate(() => ({
+  open: window.LEGO.SettingsUI.isOpen(),
+  startVisible: !document.getElementById('start-screen').classList.contains('hidden'),
+}));
+if (closed.open || !closed.startVisible) {
+  throw new Error('Escape 로 설정을 닫지 못했다: ' + JSON.stringify(closed));
+}
+
+// 다시 열었을 때(새로 고침) 저장값이 살아 있어야 한다
+await settingsPage.reload();
+await settingsPage.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 60000 });
+const persisted = await settingsPage.evaluate(() => ({
+  uiScale: window.LEGO.Settings.get('uiScale'),
+  fov: Math.round(window.LEGO_GAME.camera.fov),
+  difficulty: window.LEGO.Settings.get('difficulty'),
+  motion: document.documentElement.dataset.motion,
+}));
+if (persisted.uiScale !== 150 || persisted.fov !== 90 || persisted.difficulty !== 'easy' || persisted.motion !== 'reduced') {
+  throw new Error('설정이 저장되지 않았다: ' + JSON.stringify(persisted));
+}
+console.log('설정 저장 확인:', JSON.stringify(persisted));
+
+// 손상된 저장값은 기본값으로 조용히 복구한다
+await settingsPage.evaluate(() => {
+  window.localStorage.setItem(window.LEGO.Settings.KEY, '{ this is not json');
+});
+await settingsPage.reload();
+await settingsPage.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 60000 });
+const recovered = await settingsPage.evaluate(() => ({
+  uiScale: window.LEGO.Settings.get('uiScale'),
+  fov: window.LEGO.Settings.get('fov'),
+  quality: window.LEGO.Settings.get('quality'),
+}));
+if (recovered.uiScale !== 100 || recovered.fov !== 70 || recovered.quality !== 'auto') {
+  throw new Error('손상된 설정값 복구 실패: ' + JSON.stringify(recovered));
+}
+if (settingsErrors.length) {
+  throw new Error('설정 화면 오류: ' + settingsErrors.join(' | '));
+}
+console.log('설정 손상값 복구 확인:', JSON.stringify(recovered));
+
+// 마우스 없이 시작 → 멈춤 → 재개 → 결과 → 재시작까지 완주한다 (UX 규격 §5)
+await settingsPage.keyboard.press('Tab');
+await settingsPage.keyboard.press('Enter');
+await settingsPage.waitForTimeout(200);
+const afterStart = await settingsPage.evaluate(() => window.LEGO_GAME.state);
+await settingsPage.keyboard.press('Escape');
+await settingsPage.waitForTimeout(150);
+const afterPause = await settingsPage.evaluate(() => ({
+  state: window.LEGO_GAME.state,
+  pauseVisible: !document.getElementById('pause-screen').classList.contains('hidden'),
+}));
+await settingsPage.keyboard.press('Escape');
+await settingsPage.waitForTimeout(150);
+const afterResume = await settingsPage.evaluate(() => window.LEGO_GAME.state);
+await settingsPage.evaluate(() => window.LEGO_GAME.hurtPlayer(99));
+await settingsPage.waitForTimeout(150);
+await settingsPage.keyboard.press('Tab');
+const overFocus = await settingsPage.evaluate(() => document.activeElement && document.activeElement.id);
+await settingsPage.keyboard.press('Enter');
+await settingsPage.waitForTimeout(200);
+const keyboardFlow = await settingsPage.evaluate(() => ({
+  state: window.LEGO_GAME.state,
+  hearts: window.LEGO_GAME.player.hearts,
+}));
+if (afterStart !== 'playing' || afterPause.state !== 'pause' || !afterPause.pauseVisible) {
+  throw new Error('키보드만으로 시작·멈춤이 되지 않았다: ' + afterStart + ' ' + JSON.stringify(afterPause));
+}
+if (afterResume !== 'playing' || overFocus !== 'again-btn' || keyboardFlow.state !== 'playing') {
+  throw new Error('키보드만으로 재개·재시작이 되지 않았다: ' + JSON.stringify({ afterResume, overFocus, keyboardFlow }));
+}
+console.log('키보드 전용 흐름 확인:', JSON.stringify({ afterStart, pause: afterPause.state, afterResume, restart: keyboardFlow }));
+if (settingsErrors.length) {
+  throw new Error('설정·키보드 흐름 오류: ' + settingsErrors.join(' | '));
+}
+await settingsPage.close();
+
 // 저장소 접근이 차단돼도 부팅·플레이·점수 저장 흐름이 살아 있어야 한다.
 const deniedErrors = [];
 const denied = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -254,14 +400,23 @@ const storageFlow = await denied.evaluate(() => {
   g.start();
   g.player.score = 321;
   g.gameOver(false);
+  // 저장이 막혀도 설정은 기억(메모리) 위에서 계속 동작해야 한다
+  const S = window.LEGO.Settings;
+  S.set('uiScale', 125);
   return {
     state: g.state,
     best: g.best,
     memory: window.LEGO.Storage._memory['brickcity-best'],
+    uiScale: S.get('uiScale'),
+    uiScaleVar: document.documentElement.style.getPropertyValue('--ui-scale'),
+    fov: S.get('fov'),
   };
 });
 if (storageFlow.state !== 'over' || storageFlow.best !== 321 || storageFlow.memory !== '321') {
   throw new Error('저장소 차단 fallback 실패: ' + JSON.stringify(storageFlow));
+}
+if (storageFlow.uiScale !== 125 || storageFlow.uiScaleVar !== '1.25' || storageFlow.fov !== 70) {
+  throw new Error('저장소 차단 시 설정 fallback 실패: ' + JSON.stringify(storageFlow));
 }
 if (deniedErrors.length) {
   throw new Error('저장소 차단 페이지 오류: ' + deniedErrors.join(' | '));

@@ -43,6 +43,23 @@ P0는 공개 배포의 진실성·안전·재현성을 막는 항목, P1은 core
 
 완료: 첫 사용자 8/10이 도움 없이 3분 내 wave1, 접근성 수락표 전부 PASS.
 
+현재(2026-09-01, commit 기준 smoke 증거 있음):
+
+| 항목 | 상태 | 증거 |
+| --- | --- | --- |
+| 설정 화면(품질·UI scale·감도·FOV·반전·모션·소리·대비·난이도) | 구현 | `npm run smoke` "설정 적용 확인" |
+| 설정 저장·재로드·손상값 default 복구·저장 차단 fallback | 구현 | smoke "설정 저장/손상값 복구 확인", 저장소 차단 페이지 |
+| reduced-motion / head-bob off / 피격 반짝임 off / DoF off | 구현 | smoke `motion=reduced`, `aperture=0` |
+| keyboard-only 시작→멈춤→재개→결과→재시작 | 구현 | smoke "키보드 전용 흐름 확인" |
+| 보조 텍스트 14px 최소, focus-visible, ARIA name/dialog | 구현 | `src/style.css --hud-sub`, `src/settings-ui.js` |
+| 단계 튜토리얼 · context hint · 건너뛰기 | 미구현 | — |
+| 키 remap | 미구현 | — |
+| music/ambience 버스 | 버스 자리만 있음(음원 없음) | `src/audio.js` sfxBus |
+| 색각 보조 pattern · 자막/시각 음향 cue | 미구현 | — |
+| 대비 4.5:1 자동 검증, first-user 8/10, screen reader 실측 | 미검증 | 수동 게이트 |
+
+따라서 B2 는 **설정·접근성 절반 PASS, 첫 60초 학습 절반 FAIL** 이다.
+
 ### B3. 성능·경제 안정성
 
 - 실제 frame pass 계측, pool exhaustion counter

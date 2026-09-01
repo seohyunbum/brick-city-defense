@@ -14,7 +14,26 @@
     this.activeVoices = 0;
     this.maxVoices = 24;
     this.lastFlameAt = -Infinity;
+    // 설정 화면이 바꾸는 값. ctx 가 아직 없으면 기억만 해두고 resume 에서 반영한다.
+    this.mix = { master: 0.32, sfx: 1, mute: false };
+    this.sfxBus = null;
   }
+
+  function clamp01(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(1, n));
+  }
+
+  /** 전체/효과음 음량과 음소거를 적용한다 */
+  Sfx.prototype.setMix = function (master, sfx, mute) {
+    if (master !== undefined) this.mix.master = clamp01(master);
+    if (sfx !== undefined) this.mix.sfx = clamp01(sfx);
+    if (mute !== undefined) this.mix.mute = !!mute;
+    if (!this.master) return;
+    this.master.gain.value = this.mix.mute ? 0 : this.mix.master;
+    if (this.sfxBus) this.sfxBus.gain.value = this.mix.sfx;
+  };
 
   Sfx.prototype.resume = function () {
     if (!this.enabled) return;
@@ -24,8 +43,11 @@
         if (!AC) { this.enabled = false; return; }
         this.ctx = new AC();
         this.master = this.ctx.createGain();
-        this.master.gain.value = 0.32;
         this.master.connect(this.ctx.destination);
+        // 효과음 전용 버스 → 전체 음량. 나중에 BGM/앰비언스 버스를 나란히 붙인다.
+        this.sfxBus = this.ctx.createGain();
+        this.sfxBus.connect(this.master);
+        this.setMix();
         this.noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
         const data = this.noiseBuffer.getChannelData(0);
         for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -57,7 +79,7 @@
     g.gain.setValueAtTime(0, t);
     g.gain.linearRampToValueAtTime(o.vol === undefined ? 0.5 : o.vol, t + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0008, t + o.dur);
-    osc.connect(g); g.connect(this.master);
+    osc.connect(g); g.connect(this.sfxBus || this.master);
     osc.start(t); osc.stop(t + o.dur + 0.02);
   };
 
@@ -76,7 +98,7 @@
     const g = c.createGain();
     g.gain.setValueAtTime(vol === undefined ? 0.5 : vol, t);
     g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
-    src.connect(f); f.connect(g); g.connect(this.master);
+    src.connect(f); f.connect(g); g.connect(this.sfxBus || this.master);
     src.start(t);
     src.stop(t + dur + 0.02);
   };

@@ -52,7 +52,9 @@ CI는 두 검증을 모두 통과한 commit만 GitHub Pages에 배포한다.
 | 마우스 이동 | 둘러보기 (화면 클릭 시 마우스 잠금) |
 | 마우스 휠 / `Q` | 오른손 무기 바꾸기 |
 | `E` | 왼손 두루마리 바꾸기 |
-| `Esc` | 잠깐 멈춤 |
+| `Esc` | 잠깐 멈춤 ↔ 이어서 하기 (설정 화면에서는 닫기) |
+| `Tab` · `Enter` | 마우스 없이 버튼 고르기·실행 (시작·설정·멈춤·결과 전부) |
+| ⚙️ 설정 | 품질 · 글자 크기 · 감도 · 시야각 · 흔들림 · 소리 · 대비 · 난이도 |
 | 폰 | 왼쪽 조이스틱 이동 · 화면 드래그 시선 · ✋ 공격 · 📜 시전 버튼 |
 
 ### 규칙
@@ -79,8 +81,13 @@ CI는 두 검증을 모두 통과한 commit만 GitHub Pages에 배포한다.
 | `src/audio.js` | WebAudio 즉석 합성 효과음(에셋 파일 없음) |
 | `src/hud.js` | DOM HUD 갱신 |
 | `src/input.js` | 키보드·마우스(포인터 락)·터치 |
-| `src/storage.js` | 점수 저장 adapter(localStorage 차단 시 메모리 fallback) |
-| `src/game.js` | 현재 지휘자+전투 규칙(분리 예정인 감사 부채) |
+| `src/storage.js` | 점수·설정 저장 adapter(localStorage 차단 시 메모리 fallback) |
+| `src/settings.js` | 설정 정본(스키마·검증·저장) + 런타임 적용 |
+| `src/settings-ui.js` | 설정 화면 생성 · 키보드 전용 조작 · ARIA |
+| `src/player.js` | 1인칭 이동·시선·자원 갱신 |
+| `src/combat.js` | 조준 · 오른손 공격 · 왼손 두루마리 시전 |
+| `src/game.js` | 지휘자: 부팅·입력 배선·흐름 전이·루프·렌더 |
+| `src/boot.js` | 부팅과 실패 안내 |
 | `scripts/quality-gate.mjs` | 문서·자산 SHA·라이선스·브랜드·용량 정적 게이트 |
 | `vendor/three.min.js` | three.js 0.150.1 / REVISION 150 (UMD, MIT) |
 | `scripts/smoke.mjs` | 브라우저 스모크 테스트 + 스크린샷 |

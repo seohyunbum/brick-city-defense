@@ -127,7 +127,7 @@ for (const path of walk('src').filter((value) => value.endsWith('.js') && value 
 }
 if (rawColorCount > 93) fail(`팔레트 밖 직접 색상 증가: ${rawColorCount} > 93`);
 
-const lineLimit = { 'src/city.js': 1087, 'src/game.js': 451 };
+const lineLimit = { 'src/city.js': 1087, 'src/game.js': 430 };
 for (const [path, limit] of Object.entries(lineLimit)) {
   const lines = read(path).split(/\r?\n/u).length - 1;
   if (lines > limit) fail(`과대 모듈 증가: ${path} ${lines}줄 > ${limit}`);

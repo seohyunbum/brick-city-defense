@@ -86,10 +86,13 @@
     '}',
   ].join('\n');
 
+  const APERTURE = 0.62;   // 기본 조리개. DoF 를 끄면 0 으로 내린다.
+
   function PostFX(renderer, camera) {
     this.renderer = renderer;
     this.camera = camera;
     this.enabled = true;
+    this.capable = false;    // 깊이 텍스처가 있어 후처리를 켤 수 있는 기기인가
     this.focus = 34;
     this._focusSmooth = 34;
 
@@ -129,7 +132,7 @@
         uNear: { value: camera.near },
         uFar: { value: camera.far },
         uFocus: { value: 34 },
-        uAperture: { value: 0.62 },
+        uAperture: { value: APERTURE },
         uMaxBlur: { value: 7.5 },
         uVignette: { value: 0.18 },
         uSaturation: { value: 1.12 },
@@ -140,7 +143,19 @@
     this.scene = new THREE.Scene();
     this.scene.add(this.quad);
     this.orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.capable = true;
   }
+
+  /** 설정에서 후처리를 켜고 끈다. 깊이 텍스처가 없는 기기에서는 켜지지 않는다. */
+  PostFX.prototype.setEnabled = function (on) {
+    this.enabled = !!on && this.capable;
+  };
+
+  /** 심도 흐림만 끈다(비네팅·채도 보정은 남는다). 렌더 패스 수는 그대로다. */
+  PostFX.prototype.setDof = function (on) {
+    if (!this.material) return;
+    this.material.uniforms.uAperture.value = on ? APERTURE : 0;
+  };
 
   PostFX.prototype.resize = function (w, h, pixelRatio) {
     if (!this.enabled) return;

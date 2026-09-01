@@ -163,6 +163,11 @@
   };
 
   HUD.prototype.hurt = function () {
+    // 화면 반짝임을 끈 경우에도 피격은 알려야 한다 — 글자로 알린다
+    if (L.Settings && !L.Settings.flashOn()) {
+      this.toast('💔 맞았다!', 0.6);
+      return;
+    }
     const h = this.dom.hurt;
     h.classList.add('on');
     setTimeout(() => h.classList.remove('on'), 90);
@@ -172,6 +177,8 @@
     this.dom.startScreen.classList.toggle('hidden', name !== 'start');
     this.dom.overScreen.classList.toggle('hidden', name !== 'over');
     this.dom.pauseScreen.classList.toggle('hidden', name !== 'pause');
+    // 화면이 열려 있으면 input.js 가 게임 조작 키를 삼키지 않는다(버튼에 Space·Enter 를 넘긴다)
+    document.body.classList.toggle('screen-open', !!name);
   };
 
   HUD.prototype.gameOver = function (s) {

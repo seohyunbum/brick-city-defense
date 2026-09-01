@@ -16,8 +16,10 @@
     const inp = this.input;
     inp.sample();
     const look = inp.consumeLook(this._look);
-    p.yaw += look.yaw;
-    p.pitch = Math.max(-1.15, Math.min(0.95, p.pitch + look.pitch));
+    // 설정: 감도 배수와 위아래 반전
+    const sens = L.Settings.sensitivity();
+    p.yaw += look.yaw * sens;
+    p.pitch = Math.max(-1.15, Math.min(0.95, p.pitch + look.pitch * sens * L.Settings.pitchSign()));
 
     // 이동(카메라 기준)
     let mx = inp.moveX, mz = inp.moveZ;
@@ -37,20 +39,21 @@
     p.pos.x = Math.max(b.minX, Math.min(b.maxX, p.pos.x));
     p.pos.z = Math.max(b.minZ, Math.min(b.maxZ, p.pos.z));
 
-    // 걸을 때 시선 흔들림
+    // 걸을 때 시선 흔들림 (설정에서 끄거나 '어지러움 줄이기'로 거의 없앨 수 있다)
     const moving = len > 0.05;
+    const bobAmp = L.Settings.bobScale();
     p.bob += dt * (moving ? (inp.sprint ? 13 : 9) : 2.2);
-    const bobY = moving ? Math.sin(p.bob) * (inp.sprint ? 0.22 : 0.14) : Math.sin(p.bob) * 0.04;
+    const bobY = (moving ? Math.sin(p.bob) * (inp.sprint ? 0.22 : 0.14) : Math.sin(p.bob) * 0.04) * bobAmp;
     p.pos.y = P.eyeHeight + this.city.curbY;
 
     this.camera.position.set(p.pos.x, p.pos.y + bobY, p.pos.z);
-    this.camera.rotation.set(p.pitch, p.yaw, Math.sin(p.bob * 0.5) * (moving ? 0.012 : 0.003));
+    this.camera.rotation.set(p.pitch, p.yaw, Math.sin(p.bob * 0.5) * (moving ? 0.012 : 0.003) * bobAmp);
 
     // 쿨다운·마나·콤보
     if (p.weaponCd > 0) p.weaponCd -= dt;
     for (const k in this.skillCd) if (this.skillCd[k] > 0) this.skillCd[k] -= dt;
     if (p.invuln > 0) p.invuln -= dt;
-    p.mana = Math.min(P.maxMana, p.mana + P.manaRegen * dt);
+    p.mana = Math.min(P.maxMana, p.mana + P.manaRegen * L.Settings.difficulty().manaRegenScale * dt);
     if (p.comboTimer > 0) {
       p.comboTimer -= dt;
       if (p.comboTimer <= 0) p.combo = 0;
