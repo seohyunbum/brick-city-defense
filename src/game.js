@@ -53,6 +53,8 @@
     this.hud = new L.HUD();
     this.input = new L.Input(canvas);
     this.sfx = new L.Sfx();
+    this.indoor = L.Interiors.tracker(this.world, this.lookdev,
+      () => this.hud.toast('🏠 안으로 들어왔다', 1.4));
 
     // ---------------- 플레이어 상태
     const SPAWN = this.world.spawnPoint();
@@ -193,6 +195,7 @@
     this.enemies.clear();
     this.companions.clear();
     this.director.reset();
+    this.indoor.reset();
     this.fx.clear();
     this.progression.reset();
     this.objectives.startRun();
@@ -367,6 +370,7 @@
 
       // 오픈월드 진행 — 구역 정원 유지·주인 등장·먼 몬스터 회수
       this.director.update(dt, this.player.pos);
+      this.indoor.update(this.player.pos);
       this.companions.update(dt, this.player.pos, this.director);
 
       this.hud.update(dt, {
@@ -382,6 +386,7 @@
         boss: this.enemies.boss,
         yaw: this.player.yaw,
         district: this.director.label,
+        indoors: this.indoor.inside,
         prompt: this.companions.prompt(this.player),
         dexMet: this.dex.metCount(),
         dexTotal: L.Creatures.count,

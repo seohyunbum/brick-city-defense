@@ -13,6 +13,7 @@
   const W = L.WorldDraw;
   const R = L.RNG;
   const PR = L.Props;
+  const IN = L.Interiors;
 
   // 고정 랜드마크 — 멀리서 보이고 위치가 변하지 않는다
   const LANDMARKS = {
@@ -203,11 +204,22 @@
       const hx = cx + (i === 0 ? -size / 4 : size / 4);
       const col = R.pick(rand, HOUSE_COLORS);
       const w = size * 0.36, d = size * 0.4;
-      W.pushWall(b, hx, 0.55 + 2.2, cz, w, 4.4, d, col);
-      W.pushBox(b, hx, 0.55 + 1.3, cz + d / 2 + 0.15, 1.6, 2.6, 0.3, C.brown);   // 현관문
-      W.pushCone(b, hx, 0.55 + 5.6, cz, w * 0.82, 2.6, R.pick(rand, ROOF_COLORS));  // 지붕
-      W.pushBox(b, hx + w * 0.3, 0.55 + 6.4, cz, 0.8, 1.6, 0.8, C.lightGray); // 굴뚝
-      W.collide(ctx, hx, cz, w / 2, d / 2);
+      const roof = R.pick(rand, ROOF_COLORS);
+      if (i === 0) {
+        // 왼쪽 집만 들어갈 수 있다. 눈높이 4.6 을 넘겨야 하니 2층(8.0) 으로 세운다.
+        const H = IN.MIN_H;
+        IN.shell(ctx, hx, cz, w, d, H, {
+          wall: col, floor: C.reddishBrown, ceil: C.tan, contents: IN.homeRoom,
+        });
+        W.pushCone(b, hx, 0.55 + H + 1.9, cz, w * 0.82, 2.6, roof);
+        W.pushBox(b, hx + w * 0.3, 0.55 + H + 3.4, cz, 0.8, 1.6, 0.8, C.lightGray);
+      } else {
+        W.pushWall(b, hx, 0.55 + 2.2, cz, w, 4.4, d, col);
+        W.pushBox(b, hx, 0.55 + 1.3, cz + d / 2 + 0.15, 1.6, 2.6, 0.3, C.brown);
+        W.pushCone(b, hx, 0.55 + 5.6, cz, w * 0.82, 2.6, roof);
+        W.pushBox(b, hx + w * 0.3, 0.55 + 6.4, cz, 0.8, 1.6, 0.8, C.lightGray);
+        W.collide(ctx, hx, cz, w / 2, d / 2);
+      }
     }
     // 흰 울타리 — 1.x picketFence 의 저비용 대체
     for (let t = -size / 2 + 2; t < size / 2 - 1; t += 3.4) {
@@ -284,31 +296,34 @@
     tree(ctx, cx - size / 2 + 3, cz - size / 2 + 3, 1.0);
   }
 
-  function civic(ctx, cx, cz, size, rand, wall, band, signColor) {
-    const b = ctx.solid, g = ctx.glass;
-    const w = size * 0.78, d = size * 0.55;
-    W.pushWall(b, cx, 0.55 + 3.0, cz, w, 6.0, d, wall);
-    W.pushBox(b, cx, 0.55 + 4.6, cz, w + 0.5, 1.2, d + 0.5, band);          // 띠
-    W.pushBox(b, cx, 0.55 + 1.4, cz + d / 2 + 0.15, 2.6, 2.8, 0.3, C.brown); // 출입문
-    W.pushBox(b, cx, 0.55 + 6.6, cz, w * 0.35, 1.2, d * 0.35, signColor);   // 표지 블록
-    W.collide(ctx, cx, cz, w / 2 + 0.4, d / 2 + 0.4);
+  function civic(ctx, cx, cz, size, rand, wall, band, signColor, contents) {
+    const b = ctx.solid;
+    const w = size * 0.78, d = size * 0.55, H = IN.MIN_H;
+    // 겉모습만 있던 건물을 들어갈 수 있는 껍데기로 — 문으로만 드나든다
+    IN.shell(ctx, cx, cz, w, d, H, {
+      wall, floor: C.lightGray, ceil: C.white, doorW: 8.0, contents,
+    });
+    W.pushBox(b, cx, 0.55 + H - 1.4, cz, w + 0.5, 1.2, d + 0.5, band);      // 띠
+    W.pushBox(b, cx, 0.55 + H + 1.2, cz, w * 0.35, 1.2, d * 0.35, signColor); // 표지 블록
     lamp(ctx, cx - w / 2 - 2, cz + d / 2 + 2);
     return { w, d };
   }
 
   function police(ctx, cx, cz, size, rand) {
-    civic(ctx, cx, cz, size, rand, C.white, C.blue, C.blue);
+    civic(ctx, cx, cz, size, rand, C.white, C.blue, C.blue,
+      (c, x, z, w, d) => IN.officeRoom(c, x, z, w, d, C.blue));
     parkedCar(ctx, cx - size * 0.28, cz + size * 0.4, 0, C.blue);
     parkedCar(ctx, cx + size * 0.28, cz + size * 0.4, 0, C.white);
   }
 
   function fire(ctx, cx, cz, size, rand) {
-    civic(ctx, cx, cz, size, rand, C.darkRed, C.white, C.red);
+    civic(ctx, cx, cz, size, rand, C.darkRed, C.white, C.red,
+      (c, x, z, w, d) => IN.officeRoom(c, x, z, w, d, C.darkRed));
     parkedCar(ctx, cx, cz + size * 0.4, 0, C.red);
   }
 
   function school(ctx, cx, cz, size, rand) {
-    civic(ctx, cx, cz, size, rand, C.tan, C.reddishBrown, C.yellow);
+    civic(ctx, cx, cz, size, rand, C.tan, C.reddishBrown, C.yellow, IN.classRoom);
     const b = ctx.solid;
     W.pushBox(b, cx, 0.58, cz - size * 0.36, size * 0.8, 0.12, size * 0.22, C.orange); // 운동장
     tree(ctx, cx - size / 2 + 3, cz - size / 2 + 4, 1.1);
@@ -345,9 +360,10 @@
   function garage(ctx, cx, cz, size, rand) {
     const b = ctx.solid;
     W.pushBox(b, cx, 0.58, cz, size, 0.12, size, C.lightGray);
-    W.pushBox(b, cx, 0.55 + 2.2, cz - size * 0.26, size * 0.7, 4.4, size * 0.3, C.sandBlue);
-    W.pushBox(b, cx, 0.55 + 1.6, cz - size * 0.26 + size * 0.15, size * 0.45, 3.2, 0.3, C.darkGray);
-    W.collide(ctx, cx, cz - size * 0.26, size * 0.35, size * 0.15);
+    IN.shell(ctx, cx, cz - size * 0.24, size * 0.7, size * 0.36, IN.MIN_H, {
+      wall: C.sandBlue, floor: C.darkGray, ceil: C.lightGray,
+      doorW: size * 0.34, contents: IN.workshopRoom,
+    });
     const cols = [C.red, C.azure, C.yellow, C.white, C.green];
     for (let i = 0; i < 3; i++) {
       parkedCar(ctx, cx + (i - 1) * 7.5, cz + size * 0.22, Math.PI / 2, cols[(i + (rand() * 5 | 0)) % cols.length]);
