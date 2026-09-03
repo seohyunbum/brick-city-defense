@@ -291,16 +291,22 @@ await page.keyboard.down('KeyW');
 // 이동 속도는 프레임 수에 비례한다. 소프트웨어 렌더러 러너는 초당 0.6 칸까지 떨어져서
 // '8초 안에 들어와라'로 재면 기기 속도를 재게 된다(CI 실측: 8초에 6.5칸, 문은 11칸 앞).
 // 그래서 시간이 아니라 '전진이 멈췄는가'로 막힘을 판정한다 — 느린 것과 막힌 것은 다르다.
-let entered = false, walkedMs = 0, stalled = 0;
-let lastZ = beforeDoor.z;
-while (walkedMs < 40000 && !entered) {
+//
+// 판정 창은 폭이 넉넉해야 한다. 한 칸(0.5초)씩 비교했더니 CI 의 정상 보행(0.5초당 0.3칸)이
+// 문턱 마찰로 임계값 아래로 떨어져 '막혔다'로 오판했다 — 실제로는 들어가고 있었다.
+// 그래서 5초 창으로 본다: 느린 러너도 5초면 3칸 가고, 막히면 0 이다.
+const WINDOW = 10;              // 0.5초 × 10 = 5초
+const MIN_PROGRESS = 0.5;       // 5초에 이만큼도 못 가면 막힌 것
+let entered = false, walkedMs = 0, blocked = false;
+const zHist = [beforeDoor.z];
+while (walkedMs < 45000 && !entered && !blocked) {
   await page.waitForTimeout(500);
   walkedMs += 500;
   const now = await holdPlaying();
   entered = now.inside;
-  if (lastZ - now.z < 0.25) stalled += 1; else stalled = 0;   // 문 쪽 = -z
-  lastZ = now.z;
-  if (stalled >= 6) break;      // 3초 동안 전진 0 → 벽에 막혔다
+  zHist.push(now.z);
+  if (zHist.length > WINDOW + 1) zHist.shift();
+  if (zHist.length === WINDOW + 1 && zHist[0] - now.z < MIN_PROGRESS) blocked = true;
 }
 const atEntry = await holdPlaying();
 // 계속 밀어붙여도 뒷벽을 뚫지 못해야 한다
@@ -310,7 +316,7 @@ await page.keyboard.up('KeyW');
 
 const indoorFlag = await page.evaluate(() => window.LEGO_GAME.indoor.inside);
 const indoorReport = {
-  outsideInside: beforeDoor.inside, entered, walkedMs, stalled,
+  outsideInside: beforeDoor.inside, entered, walkedMs, blocked,
   startZ: Math.round(beforeDoor.z * 10) / 10,
   doorZ: Math.round(POLICE.doorZ * 10) / 10,
   entryZ: Math.round(atEntry.z * 10) / 10,
