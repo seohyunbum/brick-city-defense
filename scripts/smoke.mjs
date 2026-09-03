@@ -278,7 +278,7 @@ const holdPlaying = () => page.evaluate(() => {
 await page.evaluate((p) => {
   const g = window.LEGO_GAME;
   g.start();
-  g.player.pos.set(p.cx, g.player.pos.y, p.doorZ + 9);
+  g.player.pos.set(p.cx, g.player.pos.y, p.doorZ + 6);
   g.player.yaw = 0;                            // 앞 = -z (문 쪽)
   g.player.pitch = -0.04;
   g.world.prime(g.player.pos.x, g.player.pos.z);
@@ -288,21 +288,31 @@ await page.waitForTimeout(700);
 const beforeDoor = await holdPlaying();
 
 await page.keyboard.down('KeyW');
-let entered = false, walkedMs = 0;
-while (walkedMs < 8000 && !entered) {
-  await page.waitForTimeout(200);
-  walkedMs += 200;
-  entered = (await holdPlaying()).inside;
+// 이동 속도는 프레임 수에 비례한다. 소프트웨어 렌더러 러너는 초당 0.6 칸까지 떨어져서
+// '8초 안에 들어와라'로 재면 기기 속도를 재게 된다(CI 실측: 8초에 6.5칸, 문은 11칸 앞).
+// 그래서 시간이 아니라 '전진이 멈췄는가'로 막힘을 판정한다 — 느린 것과 막힌 것은 다르다.
+let entered = false, walkedMs = 0, stalled = 0;
+let lastZ = beforeDoor.z;
+while (walkedMs < 40000 && !entered) {
+  await page.waitForTimeout(500);
+  walkedMs += 500;
+  const now = await holdPlaying();
+  entered = now.inside;
+  if (lastZ - now.z < 0.25) stalled += 1; else stalled = 0;   // 문 쪽 = -z
+  lastZ = now.z;
+  if (stalled >= 6) break;      // 3초 동안 전진 0 → 벽에 막혔다
 }
 const atEntry = await holdPlaying();
 // 계속 밀어붙여도 뒷벽을 뚫지 못해야 한다
-for (let i = 0; i < 12; i++) await page.waitForTimeout(200);
+for (let i = 0; i < 10; i++) await page.waitForTimeout(500);
 const afterPush = await holdPlaying();
 await page.keyboard.up('KeyW');
 
 const indoorFlag = await page.evaluate(() => window.LEGO_GAME.indoor.inside);
 const indoorReport = {
-  outsideInside: beforeDoor.inside, entered, walkedMs,
+  outsideInside: beforeDoor.inside, entered, walkedMs, stalled,
+  startZ: Math.round(beforeDoor.z * 10) / 10,
+  doorZ: Math.round(POLICE.doorZ * 10) / 10,
   entryZ: Math.round(atEntry.z * 10) / 10,
   pushedZ: Math.round(afterPush.z * 10) / 10,
   backWallZ: Math.round(POLICE.backZ * 10) / 10,
