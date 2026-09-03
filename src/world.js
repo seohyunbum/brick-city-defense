@@ -158,12 +158,20 @@
   }
 
   /** 충돌 AABB 등록 — resolveCollision(city.js) 과 같은 형식 */
+  /**
+   * 실내 볼륨 등록 — 이 AABB 안에 있으면 '건물 안'이다.
+   * 충돌(collide)과 별개다: 벽은 막고, 방은 판정만 한다.
+   */
+  function room(ctx, x, z, hx, hz, y1) {
+    ctx.rooms.push({ x, z, hx, hz, y1: y1 || 8 });
+  }
+
   function collide(ctx, x, z, hx, hz) {
     ctx.colliders.push({ x, z, hx, hz });
   }
 
   L.WORLD_CONST = { CHUNK, HALF_CHUNKS, WORLD_HALF, LOT, ROAD_HALF, CURB_Y, VIEW_RADIUS };
-  L.WorldDraw = { pushBox, pushBoxRot, pushWall, pushCyl, pushCylRot, pushCone, pushSph, collide, geos };
+  L.WorldDraw = { pushBox, pushBoxRot, pushWall, pushCyl, pushCylRot, pushCone, pushSph, collide, room, geos };
 
   // ------------------------------------------------------------- 청크 포장
   /** 아스팔트 바닥 + 부지 인도. 도로는 64 배수 좌표에 깔린다. */
@@ -243,6 +251,7 @@
       solid: { studs, sides, ground, facade },
       glass: L.Merge.builder(),
       colliders: [],
+      rooms: [],
       rand,
     };
 
@@ -281,7 +290,7 @@
     group.matrixAutoUpdate = false;
     group.updateMatrix();
 
-    return { group, colliders: ctx.colliders, cx, cz };
+    return { group, colliders: ctx.colliders, rooms: ctx.rooms, cx, cz };
   }
 
   // ------------------------------------------------------------- 환경
@@ -455,6 +464,39 @@
       return nearColliders;
     }
 
+    let roomKey = '', nearRooms = [];
+    function roomsNear(x, z) {
+      const pcx = Math.floor(x / CHUNK), pcz = Math.floor(z / CHUNK);
+      const k = pcx + ':' + pcz;
+      if (k !== roomKey) {
+        roomKey = k;
+        nearRooms = [];
+        for (let dz = -1; dz <= 1; dz++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const c = chunks.get(key(pcx + dx, pcz + dz));
+            if (!c || !c.rooms) continue;
+            for (let i = 0; i < c.rooms.length; i++) nearRooms.push(c.rooms[i]);
+          }
+        }
+      }
+      return nearRooms;
+    }
+
+    /**
+     * 건물 안인가 — 실내면 하늘빛을 줄이고 실내등 색을 올린다(game.js).
+     * 벽으로 막혀 있으니 '문으로 들어왔다'는 사실이 곧 이 판정이 참이라는 뜻이다.
+     */
+    function indoors(x, z, y) {
+      const rooms = roomsNear(x, z);
+      for (let i = 0; i < rooms.length; i++) {
+        const r = rooms[i];
+        if (Math.abs(x - r.x) > r.hx || Math.abs(z - r.z) > r.hz) continue;
+        if (y !== undefined && y > r.y1) continue;
+        return true;
+      }
+      return false;
+    }
+
     /** 월드 밖(바다)으로 나가지 않게 해안선에서 멈춘다. */
     function clamp(pos) {
       const lim = WORLD_HALF - 6;
@@ -542,14 +584,15 @@
     }
 
     return {
-      seed, root, update, prime, collidersNear, clamp, stats, dispose, spawnPoint, districtLabel,
+      seed, root, update, prime, collidersNear, roomsNear, indoors, clamp, stats, dispose,
+      spawnPoint, districtLabel,
       // city.js 호환 표면 — enemies.js·objectives.js 가 기대하는 모양을 유지한다.
       // npcs 는 시민 스트리밍이 붙기 전까지 비어 있다(빈 배열에서 양쪽 모두 안전).
       npcs: [],
       anim: {},
       bounds: { minX: -WORLD_HALF, maxX: WORLD_HALF, minZ: -WORLD_HALF, maxZ: WORLD_HALF },
       curbY: CURB_Y,
-      invalidate: function () { nearKey = ''; },
+      invalidate: function () { nearKey = ''; roomKey = ''; },
       chunkCount: function () { return chunks.size; },
     };
   }

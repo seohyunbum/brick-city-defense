@@ -91,9 +91,11 @@
       const c = compassOf(s.yaw || 0);
       if (c !== this._lastCompass) { this._lastCompass = c; this.dom.compass.textContent = c; }
     }
-    if (this.dom.district && s.district !== this._lastDistrict) {
-      this._lastDistrict = s.district;
-      this.dom.district.textContent = s.district || '브릭 시티';
+    // 실내는 접두 아이콘으로 — ' · 실내' 를 붙이면 좁은 패널에서 두 줄로 깨진다
+    const where = (s.indoors ? '🏠 ' : '') + (s.district || '브릭 시티');
+    if (this.dom.district && where !== this._lastDistrict) {
+      this._lastDistrict = where;
+      this.dom.district.textContent = where;
     }
     this.dom.score.textContent = s.score;
 

@@ -261,6 +261,67 @@ if (wilds.alive < 1) {
 }
 console.log('위험 구역 서식 확인:', JSON.stringify(wilds));
 
+// (3.6) 건물 안으로 걸어 들어갈 수 있다 — 고정 랜드마크 경찰서(부지 0:-6)로 판정한다.
+// 긍정형 검사가 핵심이다: '벽을 못 뚫는다'만 재면 아예 못 들어가는 건물도 통과한다.
+// 순간이동이 아니라 실제 W 키로 걸어 들어간다(입력→이동→충돌 경로를 그대로 쓴다).
+const LOT_SIZE = 64 - 13 * 2;                  // LOT - ROAD_HALF*2 (buildChunk 규약)
+const POLICE = { cx: 0 * 64 + 32, cz: -6 * 64 + 32 };
+POLICE.doorZ = POLICE.cz + (LOT_SIZE * 0.55) / 2;   // civic d = size*0.55, 문은 +z 면
+POLICE.backZ = POLICE.cz - (LOT_SIZE * 0.55) / 2;
+
+const holdPlaying = () => page.evaluate(() => {
+  const g = window.LEGO_GAME;
+  if (g.state !== 'playing') { g.state = 'playing'; g.hud.screen(null); g.hud.show(true); }
+  return { z: g.player.pos.z, inside: g.world.indoors(g.player.pos.x, g.player.pos.z, g.player.pos.y) };
+});
+
+await page.evaluate((p) => {
+  const g = window.LEGO_GAME;
+  g.start();
+  g.player.pos.set(p.cx, g.player.pos.y, p.doorZ + 9);
+  g.player.yaw = 0;                            // 앞 = -z (문 쪽)
+  g.player.pitch = -0.04;
+  g.world.prime(g.player.pos.x, g.player.pos.z);
+  g.world.invalidate();
+}, POLICE);
+await page.waitForTimeout(700);
+const beforeDoor = await holdPlaying();
+
+await page.keyboard.down('KeyW');
+let entered = false, walkedMs = 0;
+while (walkedMs < 8000 && !entered) {
+  await page.waitForTimeout(200);
+  walkedMs += 200;
+  entered = (await holdPlaying()).inside;
+}
+const atEntry = await holdPlaying();
+// 계속 밀어붙여도 뒷벽을 뚫지 못해야 한다
+for (let i = 0; i < 12; i++) await page.waitForTimeout(200);
+const afterPush = await holdPlaying();
+await page.keyboard.up('KeyW');
+
+const indoorFlag = await page.evaluate(() => window.LEGO_GAME.indoor.inside);
+const indoorReport = {
+  outsideInside: beforeDoor.inside, entered, walkedMs,
+  entryZ: Math.round(atEntry.z * 10) / 10,
+  pushedZ: Math.round(afterPush.z * 10) / 10,
+  backWallZ: Math.round(POLICE.backZ * 10) / 10,
+  stillInside: afterPush.inside, indoorFlag,
+};
+if (indoorReport.outsideInside) {
+  throw new Error('건물 밖인데 실내로 판정됐다: ' + JSON.stringify(indoorReport));
+}
+if (!entered) {
+  throw new Error('문으로 걸어 들어갈 수 없다(장식 문): ' + JSON.stringify(indoorReport));
+}
+if (afterPush.z < POLICE.backZ || !afterPush.inside) {
+  throw new Error('뒷벽을 뚫고 나갔다: ' + JSON.stringify(indoorReport));
+}
+if (!indoorFlag) {
+  throw new Error('실내인데 조명·HUD 가 실내로 바뀌지 않았다: ' + JSON.stringify(indoorReport));
+}
+console.log('건물 실내 확인:', JSON.stringify(indoorReport));
+
 // (4) 월드 어느 지점에서도 렌더 예산 — 평균이 아니라 최악값으로 판정한다
 const worldBudget = await page.evaluate(async () => {
   const g = window.LEGO_GAME;
