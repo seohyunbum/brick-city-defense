@@ -418,8 +418,10 @@ const tutorialFlow = await settingsPage.evaluate(async () => {
   for (const e of farTargets) g.enemies.kill(e);
   await until(() => T.step() !== 'blaster', 20000);
   seen.push(T.step());
+  const warning = document.getElementById('toast').textContent;   // 시민이 알려 주는 방향
   await until(() => !T.isActive(), 30000);  // 마지막 단계는 잠깐 뒤 스스로 끝난다
   return {
+    warning,
     seen, waveHeldBack, cardVisible,
     swordSpawned: !!swordTarget,
     farCount: farTargets.length,
@@ -437,6 +439,9 @@ if (!tutorialFlow.waveHeldBack || !tutorialFlow.cardVisible || !tutorialFlow.swo
 }
 if (tutorialFlow.active || !tutorialFlow.waveActive || tutorialFlow.setting !== false || !tutorialFlow.cardHidden) {
   throw new Error('안내가 끝난 뒤 웨이브로 이어지지 않았다: ' + JSON.stringify(tutorialFlow));
+}
+if (!/몬스터가 와요/u.test(tutorialFlow.warning || '')) {
+  throw new Error('시민이 위험 방향을 알려 주지 않았다: ' + JSON.stringify(tutorialFlow.warning));
 }
 console.log('첫 안내 확인:', JSON.stringify(tutorialFlow));
 
@@ -522,8 +527,33 @@ if (walked.z >= 30 || walked.hint !== 'I A S D') {
 }
 console.log('키 재배정 확인:', JSON.stringify({ remapped, conflict: conflict.warn, walked }));
 
+
+// 소리를 글자로: 켜면 중요한 소리가 자막으로 뜨고, 끄면 뜨지 않는다
+const captions = await settingsPage.evaluate(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const S = window.LEGO.Settings;
+  const g = window.LEGO_GAME;
+  const el = document.getElementById('caption');
+  S.set('captions', true);
+  g.start();
+  g.sfx.hurt();
+  await wait(120);
+  const on = el.classList.contains('on');
+  const text = el.textContent;
+  S.set('captions', false);
+  el.classList.remove('on');
+  el.textContent = '';
+  g.sfx.boom();
+  await wait(120);
+  return { on, text, live: el.getAttribute('aria-live'), offStaysHidden: !el.classList.contains('on') };
+});
+if (!captions.on || captions.text !== '💔 맞았다!' || captions.live !== 'polite' || !captions.offStaysHidden) {
+  throw new Error('소리 자막이 설정대로 동작하지 않았다: ' + JSON.stringify(captions));
+}
+console.log('소리 자막 확인:', JSON.stringify(captions));
+
 if (settingsErrors.length) {
-  throw new Error('첫 안내·키 배정 오류: ' + settingsErrors.join(' | '));
+  throw new Error('첫 안내·키 배정·자막 오류: ' + settingsErrors.join(' | '));
 }
 await settingsPage.close();
 

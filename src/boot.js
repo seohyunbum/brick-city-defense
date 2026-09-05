@@ -31,6 +31,8 @@
       // 저장된 설정을 게임과 문서에 적용하고 설정 화면을 잇는다
       L.Settings.attach(game);
       L.SettingsUI.install(game);
+      // 소리를 글자로 보여주는 설정이 켜지면 중요한 소리가 자막으로 뜬다
+      game.sfx.onCue = (text) => game.hud.caption(text);
     } catch (err) {
       showFailure(err);
     }

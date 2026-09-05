@@ -17,7 +17,15 @@
     // 설정 화면이 바꾸는 값. ctx 가 아직 없으면 기억만 해두고 resume 에서 반영한다.
     this.mix = { master: 0.32, sfx: 1, mute: false };
     this.sfxBus = null;
+    // 소리를 글자로 보여주는 자막 연결점(boot.js 가 HUD 로 잇는다).
+    // 소리가 꺼져 있거나 WebAudio 가 없어도 자막은 나와야 하므로 재생과 분리한다.
+    this.onCue = null;
   }
+
+  /** 중요한 소리 하나를 글자로 알린다 */
+  Sfx.prototype.cue = function (text) {
+    if (this.onCue) this.onCue(text);
+  };
 
   function clamp01(value) {
     const n = Number(value);
@@ -106,7 +114,11 @@
   Sfx.prototype.shoot = function () { this.tone({ type: 'square', f0: 900, f1: 260, dur: 0.09, vol: 0.22 }); };
   Sfx.prototype.sword = function () { this.tone({ type: 'triangle', f0: 320, f1: 1400, dur: 0.13, vol: 0.24 }); };
   Sfx.prototype.throwBomb = function () { this.tone({ type: 'sine', f0: 220, f1: 520, dur: 0.16, vol: 0.22 }); };
-  Sfx.prototype.boom = function () { this.noise(0.55, 0.55, 1200); this.tone({ type: 'sine', f0: 120, f1: 40, dur: 0.4, vol: 0.3 }); };
+  Sfx.prototype.boom = function () {
+    this.cue('💥 쾅!');
+    this.noise(0.55, 0.55, 1200);
+    this.tone({ type: 'sine', f0: 120, f1: 40, dur: 0.4, vol: 0.3 });
+  };
   Sfx.prototype.cast = function () { this.tone({ type: 'sawtooth', f0: 180, f1: 980, dur: 0.28, vol: 0.2 }); };
   Sfx.prototype.flame = function () {
     if (!this.ctx) return;
@@ -115,15 +127,20 @@
     this.lastFlameAt = now;
     this.noise(0.18, 0.16, 700);
   };
-  Sfx.prototype.hurt = function () { this.tone({ type: 'sawtooth', f0: 300, f1: 90, dur: 0.3, vol: 0.3 }); };
+  Sfx.prototype.hurt = function () {
+    this.cue('💔 맞았다!');
+    this.tone({ type: 'sawtooth', f0: 300, f1: 90, dur: 0.3, vol: 0.3 });
+  };
   Sfx.prototype.pickup = function () { this.tone({ type: 'square', f0: 700, f1: 1300, dur: 0.09, vol: 0.16 }); };
   Sfx.prototype.pop = function () { this.tone({ type: 'square', f0: 480, f1: 160, dur: 0.11, vol: 0.18 }); };
   Sfx.prototype.wave = function () {
+    this.cue('📣 웨이브 신호');
     this.tone({ type: 'square', f0: 520, f1: 780, dur: 0.16, vol: 0.2 });
     const self = this;
     setTimeout(() => self.tone({ type: 'square', f0: 780, f1: 1180, dur: 0.22, vol: 0.2 }), 150);
   };
   Sfx.prototype.gameOver = function () {
+    this.cue('🔔 게임 끝 소리');
     this.tone({ type: 'sawtooth', f0: 420, f1: 90, dur: 0.9, vol: 0.3 });
   };
 

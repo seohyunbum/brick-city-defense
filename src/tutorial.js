@@ -38,6 +38,39 @@
     return game ? game.player.kills - killMark : 0;
   }
 
+  // 몬스터가 등장하는 큰길 저편(enemies.js 의 spawn 위치와 같은 쪽)
+  const DANGER_X = 0, DANGER_Z = -56;
+
+  /** 플레이어가 보는 방향 기준으로 위험한 쪽을 말한다 */
+  function dangerSide() {
+    const p = game.player;
+    const toDanger = Math.atan2(DANGER_X - p.pos.x, DANGER_Z - p.pos.z);
+    // 앞 = (-sin yaw, -cos yaw) — player.js 와 같은 규약
+    const forward = Math.atan2(-Math.sin(p.yaw), -Math.cos(p.yaw));
+    const diff = toDanger - forward;
+    const a = Math.atan2(Math.sin(diff), Math.cos(diff));   // -π~π 로 정규화
+    if (Math.abs(a) < Math.PI / 4) return '⬆️ 앞';
+    if (Math.abs(a) > Math.PI * 0.75) return '⬇️ 뒤';
+    return a > 0 ? '⬅️ 왼쪽' : '➡️ 오른쪽';
+  }
+
+  /** 가장 가까운 시민이 위험한 쪽을 바라보고, 어느 쪽인지 알려 준다 */
+  function warnFromCitizen() {
+    const npcs = game.city.npcs;
+    const p = game.player.pos;
+    let near = null, bestD = Infinity;
+    for (let i = 0; i < npcs.length; i++) {
+      const n = npcs[i];
+      const d = Math.hypot(n.fig.position.x - p.x, n.fig.position.z - p.z);
+      if (d < bestD) { bestD = d; near = n; }
+    }
+    if (near) {
+      near.scared = 0;
+      near.fig.rotation.y = Math.atan2(DANGER_X - near.fig.position.x, DANGER_Z - near.fig.position.z);
+    }
+    game.hud.toast('시민: ' + dangerSide() + ' 큰길에서 몬스터가 와요!', 2.4);
+  }
+
   /** 플레이어 앞쪽(오른쪽 side 만큼 옆)에 슬라임 한 마리를 세운다 */
   function spawnAhead(distance, side) {
     const e = game.enemies.spawn('slime');
@@ -106,6 +139,7 @@
       hint: '',
       goal: 2.6,
       progress: () => elapsed,
+      enter: warnFromCitizen,
     },
   ];
 

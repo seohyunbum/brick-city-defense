@@ -34,6 +34,7 @@
       overBest: el('over-best'),
       overTitle: el('over-title'),
       touch: el('touch'),
+      caption: el('caption'),
     };
     this.slots = { right: [], left: [] };
     this._buildSlots(this.dom.rightRow, L.WEAPONS, 'right');
@@ -42,6 +43,8 @@
     this._hitTimer = 0;
     this._comboTimer = 0;
     this._lastHearts = -1;
+    this._captionTimer = 0;
+    this._captionText = '';
   }
 
   HUD.prototype._buildSlots = function (row, items, side) {
@@ -144,6 +147,23 @@
       this._comboTimer -= dt;
       if (this._comboTimer <= 0) this.dom.comboPanel.classList.remove('pop');
     }
+    if (this._captionTimer > 0) {
+      this._captionTimer -= dt;
+      if (this._captionTimer <= 0) {
+        this.dom.caption.classList.remove('on');
+        this._captionText = '';
+      }
+    }
+  };
+
+  /** 소리를 글자로. 같은 글자가 이어지면 시간만 늘려 screen reader 를 폭주시키지 않는다. */
+  HUD.prototype.caption = function (text) {
+    if (!this.dom.caption || !L.Settings.captionsOn()) return;
+    this._captionTimer = 1.8;
+    if (text === this._captionText) return;
+    this._captionText = text;
+    this.dom.caption.textContent = text;
+    this.dom.caption.classList.add('on');
   };
 
   HUD.prototype.toast = function (text, seconds) {

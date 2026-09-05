@@ -99,6 +99,10 @@
           hint: '글자와 칸 테두리를 더 진하게 만든다.',
         },
         { id: 'boldCrosshair', type: 'toggle', label: '조준점 굵게', def: false },
+        {
+          id: 'captions', type: 'toggle', label: '소리를 글자로 보여주기', def: false,
+          hint: '중요한 소리(피격·폭발·웨이브)를 화면 아래 글자로 함께 알린다.',
+        },
       ],
     },
     {
@@ -247,6 +251,8 @@
     if (values.reducedMotion) return 0.15;
     return values.headBob ? 1 : 0;
   }
+  /** 소리를 글자로도 보여줄지 */
+  function captionsOn() { return values.captions; }
   /** 피격 화면 반짝임을 쓸지 */
   function flashOn() { return values.hurtFlash && !values.reducedMotion; }
   /** 심도 흐림을 쓸지 (어지러움 줄이기가 켜지면 함께 끈다) */
@@ -343,6 +349,7 @@
     sensitivity,
     pitchSign,
     bobScale,
+    captionsOn,
     flashOn,
     dofOn,
     difficulty,
