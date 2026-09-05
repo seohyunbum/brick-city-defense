@@ -86,8 +86,12 @@
       ],
     },
     {
-      id: 'play', title: '난이도', emoji: '🎮',
+      id: 'play', title: '게임', emoji: '🎮',
       items: [
+        {
+          id: 'tutorial', type: 'toggle', label: '처음 안내 보기', def: true,
+          hint: '켜면 다음 판을 시작할 때 조작 안내를 처음부터 다시 보여 준다.',
+        },
         {
           id: 'difficulty', type: 'choice', label: '난이도', def: 'normal',
           choices: [

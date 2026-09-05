@@ -359,3 +359,26 @@ input:focus-visible, .set-chip:focus-visible, .set-switch:focus-visible {
 :root[data-motion="reduced"] #combo-panel.pop { transform: none; }
 :root[data-motion="reduced"] .slot.active { transform: none; }
 :root[data-motion="reduced"] #toast.on { transform: translate(-50%, -50%) scale(1); }
+
+/* ------------------------------------------------------------- 첫 60초 안내 */
+#tutorial-card {
+  position: fixed; top: 92px; left: 50%; transform: translateX(-50%); z-index: 14;
+  pointer-events: none; text-align: center; width: max-content; max-width: min(620px, 90vw);
+  /* 가운데 정렬을 지켜야 하므로 zoom 대신 글자 크기로 배율을 반영한다 */
+  font-size: calc(15px * var(--ui-scale));
+  background: var(--panel); border: 2px solid var(--stroke); border-radius: 1em;
+  padding: 0.7em 1.2em 0.9em; backdrop-filter: blur(4px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.tut-step { font-size: 0.95em; font-weight: 800; color: var(--lego-yellow); letter-spacing: 1px; }
+.tut-text { font-size: 1.25em; font-weight: 800; margin-top: 0.15em; line-height: 1.4; }
+.tut-hint { font-size: 1em; opacity: 0.9; margin-top: 0.5em; line-height: 1.5; }
+.tut-skip {
+  pointer-events: auto; margin-top: 0.6em; font: 800 0.95em/1 inherit;
+  padding: 0.5em 1.1em; border-radius: 0.7em; min-height: 0;
+  background: rgba(255, 255, 255, 0.12); color: #fff; border: 2px solid var(--stroke);
+  box-shadow: none;
+}
+.tut-skip:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
+/* 시작·설정·멈춤·결과 화면이 떠 있는 동안에는 안내 카드를 감춘다 */
+body.screen-open #tutorial-card { display: none; }

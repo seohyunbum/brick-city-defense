@@ -52,13 +52,15 @@ P0는 공개 배포의 진실성·안전·재현성을 막는 항목, P1은 core
 | reduced-motion / head-bob off / 피격 반짝임 off / DoF off | 구현 | smoke `motion=reduced`, `aperture=0` |
 | keyboard-only 시작→멈춤→재개→결과→재시작 | 구현 | smoke "키보드 전용 흐름 확인" |
 | 보조 텍스트 14px 최소, focus-visible, ARIA name/dialog | 구현 | `src/style.css --hud-sub`, `src/settings-ui.js` |
-| 단계 튜토리얼 · context hint · 건너뛰기 | 미구현 | — |
+| 5단계 첫 안내 · 정체 15초 힌트 · Enter/버튼 건너뛰기 · 재실행 | 구현 | smoke "첫 안내 확인", "안내 재실행·건너뛰기 확인" |
+| 시민이 위험 방향을 알려 주는 연출 | 미구현 | — |
 | 키 remap | 미구현 | — |
 | music/ambience 버스 | 버스 자리만 있음(음원 없음) | `src/audio.js` sfxBus |
 | 색각 보조 pattern · 자막/시각 음향 cue | 미구현 | — |
 | 대비 4.5:1 자동 검증, first-user 8/10, screen reader 실측 | 미검증 | 수동 게이트 |
 
-따라서 B2 는 **설정·접근성 절반 PASS, 첫 60초 학습 절반 FAIL** 이다.
+따라서 B2 는 **설정·접근성·첫 안내 구현 완료, 수락 기준(first-user 8/10)은 측정 전** 이다.
+키 remap 과 시민 경고 연출이 남아 있다.
 
 ### B3. 성능·경제 안정성
 

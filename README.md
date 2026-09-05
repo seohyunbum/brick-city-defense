@@ -84,6 +84,8 @@ CI는 두 검증을 모두 통과한 commit만 GitHub Pages에 배포한다.
 | `src/storage.js` | 점수·설정 저장 adapter(localStorage 차단 시 메모리 fallback) |
 | `src/settings.js` | 설정 정본(스키마·검증·저장) + 런타임 적용 |
 | `src/settings-ui.js` | 설정 화면 생성 · 키보드 전용 조작 · ARIA |
+| `src/tutorial.js` | 첫 60초 5단계 안내(행동으로 진행 · 힌트 · 건너뛰기) |
+| `src/city-anim.js` | 헬리콥터·크레인·경광등·시민 움직임 |
 | `src/player.js` | 1인칭 이동·시선·자원 갱신 |
 | `src/combat.js` | 조준 · 오른손 공격 · 왼손 두루마리 시전 |
 | `src/game.js` | 지휘자: 부팅·입력 배선·흐름 전이·루프·렌더 |

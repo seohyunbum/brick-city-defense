@@ -29,6 +29,8 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 
 await page.goto('file://' + resolve(root, 'index.html'));
 await page.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 20000 });
+// 이 페이지는 웨이브 루프·성능을 잰다. 첫 안내는 아래 전용 테스트에서 따로 확인한다.
+await page.evaluate(() => window.LEGO.Settings.set('tutorial', false));
 // 소프트웨어 렌더러는 항상 느리다 — 자동 품질 저하를 끄고 최고 품질로 확인한다
 await page.evaluate(() => { window.LEGO_GAME.autoQuality = false; });
 await page.waitForTimeout(1200);
@@ -380,6 +382,98 @@ if (afterResume !== 'playing' || overFocus !== 'again-btn' || keyboardFlow.state
 console.log('키보드 전용 흐름 확인:', JSON.stringify({ afterStart, pause: afterPause.state, afterResume, restart: keyboardFlow }));
 if (settingsErrors.length) {
   throw new Error('설정·키보드 흐름 오류: ' + settingsErrors.join(' | '));
+}
+
+// 첫 60초 안내: 처음 여는 아이에게만 뜨고, 단계마다 실제 행동으로 넘어간다
+await settingsPage.evaluate(() => window.LEGO.Settings.reset());
+await settingsPage.reload();
+await settingsPage.waitForFunction(() => !!window.LEGO_GAME, null, { timeout: 60000 });
+const tutorialFlow = await settingsPage.evaluate(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const g = window.LEGO_GAME;
+  const T = window.LEGO.Tutorial;
+  // 소프트웨어 렌더러는 초당 몇 프레임뿐이다 — 프레임 수가 아니라 상태로 기다린다
+  const until = async (fn, ms) => {
+    const t0 = Date.now();
+    while (!fn() && Date.now() - t0 < ms) await wait(150);
+    return fn();
+  };
+  const seen = [];
+  g.start();                               // 안내 카드는 이때 만들어진다
+  const card = document.getElementById('tutorial-card');
+  seen.push(T.step());
+  const waveHeldBack = !g.enemies.waveActive;
+  const cardVisible = !card.classList.contains('hidden');
+  g.player.yaw += 3;                       // 둘러보기
+  await until(() => T.step() !== 'look', 20000);
+  seen.push(T.step());
+  g.player.pos.x += 20;                    // 걷기
+  await until(() => T.step() !== 'move', 20000);
+  seen.push(T.step());
+  const swordTarget = g.enemies.list.find((e) => e.alive);   // 안내가 세운 슬라임
+  if (swordTarget) g.enemies.kill(swordTarget);
+  await until(() => T.step() !== 'sword', 20000);
+  seen.push(T.step());
+  const farTargets = g.enemies.list.filter((e) => e.alive);
+  for (const e of farTargets) g.enemies.kill(e);
+  await until(() => T.step() !== 'blaster', 20000);
+  seen.push(T.step());
+  await until(() => !T.isActive(), 30000);  // 마지막 단계는 잠깐 뒤 스스로 끝난다
+  return {
+    seen, waveHeldBack, cardVisible,
+    swordSpawned: !!swordTarget,
+    farCount: farTargets.length,
+    active: T.isActive(),
+    waveActive: g.enemies.waveActive,
+    setting: window.LEGO.Settings.get('tutorial'),
+    cardHidden: card.classList.contains('hidden'),
+  };
+});
+if (tutorialFlow.seen.join(',') !== 'look,move,sword,blaster,ready') {
+  throw new Error('안내 단계가 행동으로 넘어가지 않았다: ' + JSON.stringify(tutorialFlow));
+}
+if (!tutorialFlow.waveHeldBack || !tutorialFlow.cardVisible || !tutorialFlow.swordSpawned || tutorialFlow.farCount !== 2) {
+  throw new Error('안내 중 웨이브 보류·표적 배치가 어긋났다: ' + JSON.stringify(tutorialFlow));
+}
+if (tutorialFlow.active || !tutorialFlow.waveActive || tutorialFlow.setting !== false || !tutorialFlow.cardHidden) {
+  throw new Error('안내가 끝난 뒤 웨이브로 이어지지 않았다: ' + JSON.stringify(tutorialFlow));
+}
+console.log('첫 안내 확인:', JSON.stringify(tutorialFlow));
+
+// 두 번째 판에서는 배운 조작을 다시 요구하지 않는다
+const secondRun = await settingsPage.evaluate(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  window.LEGO_GAME.start();
+  await wait(400);
+  return {
+    active: window.LEGO.Tutorial.isActive(),
+    waveActive: window.LEGO_GAME.enemies.waveActive,
+  };
+});
+if (secondRun.active || !secondRun.waveActive) {
+  throw new Error('두 번째 판에서 안내가 다시 떴다: ' + JSON.stringify(secondRun));
+}
+
+// Enter 로 언제든 건너뛸 수 있다
+await settingsPage.evaluate(() => {
+  window.LEGO.Settings.set('tutorial', true);
+  window.LEGO_GAME.start();
+});
+await settingsPage.waitForTimeout(200);
+const beforeSkip = await settingsPage.evaluate(() => window.LEGO.Tutorial.isActive());
+await settingsPage.keyboard.press('Enter');
+await settingsPage.waitForTimeout(500);
+const afterSkip = await settingsPage.evaluate(() => ({
+  active: window.LEGO.Tutorial.isActive(),
+  waveActive: window.LEGO_GAME.enemies.waveActive,
+  setting: window.LEGO.Settings.get('tutorial'),
+}));
+if (!beforeSkip || afterSkip.active || !afterSkip.waveActive || afterSkip.setting !== false) {
+  throw new Error('안내 건너뛰기가 되지 않았다: ' + JSON.stringify({ beforeSkip, afterSkip }));
+}
+console.log('안내 재실행·건너뛰기 확인:', JSON.stringify({ secondRun, afterSkip }));
+if (settingsErrors.length) {
+  throw new Error('첫 안내 오류: ' + settingsErrors.join(' | '));
 }
 await settingsPage.close();
 
