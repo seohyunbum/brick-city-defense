@@ -1,9 +1,14 @@
 /* =========================================================================
  * input.js — 키보드/마우스(포인터 락) + 폰 터치 조작
- * game.js 는 상태 플래그만 읽는다. 키 배정 정본은 loadout.js 의 key 값.
+ * game.js 는 상태 플래그만 읽는다.
+ * 무기·두루마리 슬롯 키(1~6)는 loadout.js 의 key 값이 정본이고,
+ * 이동·달리기·시전·전환 키는 settings.js 의 '키 배정'이 정본이다(화살표는 항상 이동).
  * ========================================================================= */
 (function (L) {
   'use strict';
+
+  const MOVE_IDS = ['moveF', 'moveB', 'moveL', 'moveR'];
+  const ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
   function Input(canvas) {
     this.canvas = canvas;
@@ -44,17 +49,18 @@
       for (let i = 0; i < L.SKILLS.length; i++) {
         if (e.code === 'Digit' + L.SKILLS[i].key && self.hooks.selectSkill) self.hooks.selectSkill(i);
       }
-      if (e.code === 'KeyQ' && self.hooks.swapWeapon) self.hooks.swapWeapon(1);
-      if (e.code === 'KeyE' && self.hooks.swapSkill) self.hooks.swapSkill(1);
-      if (e.code === 'Space') { self.castHeld = true; e.preventDefault(); }
+      if (e.code === L.Settings.get('nextWeapon') && self.hooks.swapWeapon) self.hooks.swapWeapon(1);
+      if (e.code === L.Settings.get('nextSkill') && self.hooks.swapSkill) self.hooks.swapSkill(1);
+      if (e.code === L.Settings.get('cast')) { self.castHeld = true; e.preventDefault(); }
       if (e.code === 'Escape' && self.hooks.pause) self.hooks.pause();
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) >= 0) {
+      // 이동·화살표 키는 화면이 스크롤되지 않게 기본 동작을 막는다
+      if (MOVE_IDS.some((id) => L.Settings.get(id) === e.code) || ARROWS.indexOf(e.code) >= 0) {
         e.preventDefault();
       }
     });
     window.addEventListener('keyup', (e) => {
       self.keys[e.code] = false;
-      if (e.code === 'Space') self.castHeld = false;
+      if (e.code === L.Settings.get('cast')) self.castHeld = false;
     });
     window.addEventListener('blur', () => {
       self.keys = Object.create(null);
@@ -194,9 +200,10 @@
   Input.prototype.sample = function () {
     if (!this.touchMode) {
       const k = this.keys;
-      this.moveZ = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0);
-      this.moveX = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0);
-      this.sprint = !!(k.ShiftLeft || k.ShiftRight);
+      const S = L.Settings;
+      this.moveZ = (S.keyDown(k, 'moveF') || k.ArrowUp ? 1 : 0) - (S.keyDown(k, 'moveB') || k.ArrowDown ? 1 : 0);
+      this.moveX = (S.keyDown(k, 'moveR') || k.ArrowRight ? 1 : 0) - (S.keyDown(k, 'moveL') || k.ArrowLeft ? 1 : 0);
+      this.sprint = S.keyDown(k, 'sprint');
     }
   };
 

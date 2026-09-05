@@ -68,8 +68,13 @@
     },
     {
       id: 'move',
-      text: '🚶 W A S D 로 걸어 보세요',
-      hint: 'W 앞 · S 뒤 · A 왼쪽 · D 오른쪽. Shift 를 누르면 달린다',
+      text: '🚶 걸어서 도시를 움직여 보세요',
+      hint: () => {
+        const S = L.Settings;
+        return S.keyLabel(S.get('moveF')) + ' 앞 · ' + S.keyLabel(S.get('moveB')) + ' 뒤 · '
+          + S.keyLabel(S.get('moveL')) + ' 왼쪽 · ' + S.keyLabel(S.get('moveR')) + ' 오른쪽. '
+          + S.keyLabel(S.get('sprint')) + ' 를 누르면 달린다';
+      },
       goal: 14,
       progress: () => moved,
     },
@@ -139,7 +144,7 @@
     if (!step) return;
     stepEl.textContent = (index + 1) + ' / ' + STEPS.length;
     textEl.textContent = step.text;
-    hintEl.textContent = step.hint;
+    hintEl.textContent = typeof step.hint === 'function' ? step.hint() : step.hint;
     hintEl.classList.add('hidden');
     card.classList.remove('hidden');
   }

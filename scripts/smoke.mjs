@@ -472,8 +472,58 @@ if (!beforeSkip || afterSkip.active || !afterSkip.waveActive || afterSkip.settin
   throw new Error('안내 건너뛰기가 되지 않았다: ' + JSON.stringify({ beforeSkip, afterSkip }));
 }
 console.log('안내 재실행·건너뛰기 확인:', JSON.stringify({ secondRun, afterSkip }));
+
+// 키 재배정: 설정 화면에서 키를 바꾸고, 충돌은 저장 전에 막고, 실제 이동에 반영된다
+await settingsPage.evaluate(() => {
+  window.LEGO.Settings.reset();
+  window.LEGO.Settings.set('tutorial', false);
+  window.LEGO.SettingsUI.open();
+});
+await settingsPage.waitForTimeout(200);
+// 마우스 없이: 버튼에 초점을 주고 Enter 로 '키 기다리기'를 켠다
+await settingsPage.evaluate(() => document.getElementById('set-moveF').focus());
+await settingsPage.keyboard.press('Enter');
+await settingsPage.keyboard.press('KeyI');
+await settingsPage.waitForTimeout(150);
+const remapped = await settingsPage.evaluate(() => window.LEGO.Settings.get('moveF'));
+await settingsPage.evaluate(() => document.getElementById('set-moveF').focus());
+await settingsPage.keyboard.press('Enter');
+await settingsPage.keyboard.press('KeyS');          // 뒤로 가 이미 쓰는 키
+await settingsPage.waitForTimeout(150);
+const conflict = await settingsPage.evaluate(() => ({
+  moveF: window.LEGO.Settings.get('moveF'),
+  warn: (document.querySelector('#set-moveF').parentElement.querySelector('.set-warn') || {}).textContent,
+  warnShown: !document.querySelector('#set-moveF').parentElement
+    .querySelector('.set-warn').classList.contains('hidden'),
+}));
+await settingsPage.keyboard.press('Escape');        // 키 기다리기 취소
+await settingsPage.waitForTimeout(120);
+if (remapped !== 'KeyI' || conflict.moveF !== 'KeyI' || !conflict.warnShown) {
+  throw new Error('키 재배정/충돌 알림이 어긋났다: ' + JSON.stringify({ remapped, conflict }));
+}
+
+// 바꾼 키로 실제로 걸어야 한다
+await settingsPage.evaluate(() => {
+  window.LEGO.SettingsUI.close();
+  const g = window.LEGO_GAME;
+  g.start();
+  g.player.pos.set(0, 5.15, 30);
+});
+await settingsPage.waitForTimeout(200);
+await settingsPage.keyboard.down('KeyI');
+await settingsPage.waitForTimeout(1800);
+await settingsPage.keyboard.up('KeyI');
+const walked = await settingsPage.evaluate(() => ({
+  z: Math.round(window.LEGO_GAME.player.pos.z),
+  hint: (document.querySelector('[data-keyhint="move"]') || {}).textContent,
+}));
+if (walked.z >= 30 || walked.hint !== 'I A S D') {
+  throw new Error('바꾼 키로 걷지 못했거나 안내 문구가 갱신되지 않았다: ' + JSON.stringify(walked));
+}
+console.log('키 재배정 확인:', JSON.stringify({ remapped, conflict: conflict.warn, walked }));
+
 if (settingsErrors.length) {
-  throw new Error('첫 안내 오류: ' + settingsErrors.join(' | '));
+  throw new Error('첫 안내·키 배정 오류: ' + settingsErrors.join(' | '));
 }
 await settingsPage.close();
 

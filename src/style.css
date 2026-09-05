@@ -382,3 +382,17 @@ input:focus-visible, .set-chip:focus-visible, .set-switch:focus-visible {
 .tut-skip:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
 /* 시작·설정·멈춤·결과 화면이 떠 있는 동안에는 안내 카드를 감춘다 */
 body.screen-open #tutorial-card { display: none; }
+
+/* ------------------------------------------------------------- 키 배정 */
+.set-group-hint {
+  margin: 0 0 6px; font-size: var(--hud-sub); opacity: 0.8; line-height: 1.5;
+}
+.set-key {
+  display: flex; align-items: center; gap: 10px; justify-content: flex-end; flex-wrap: wrap;
+}
+.set-key .set-chip { min-width: 84px; }
+.set-chip.listening { background: var(--lego-red); color: #fff; border-color: #fff; }
+.set-warn {
+  flex-basis: 100%; text-align: right; margin-top: 4px;
+  font-size: var(--hud-sub); font-weight: 700; color: var(--lego-yellow);
+}

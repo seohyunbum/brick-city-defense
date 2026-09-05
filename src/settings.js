@@ -10,6 +10,22 @@
 
   const KEY = 'brickcity-settings-v1';
 
+  // 배정할 수 없는 키: 화면 조작·안내 건너뛰기·무기 슬롯(1~6)은 고정이다
+  const BLOCKED_KEYS = /^(Escape|Tab|Enter|NumpadEnter|ContextMenu|Digit\d|Numpad\d|F\d+)$/u;
+
+  /** 키 코드를 아이가 읽을 수 있는 이름으로 */
+  function keyLabel(code) {
+    if (!code) return '없음';
+    if (code === 'Space') return 'Space';
+    if (code.indexOf('Key') === 0) return code.slice(3);
+    if (code.indexOf('Digit') === 0) return code.slice(5);
+    if (code.indexOf('Arrow') === 0) return { Up: '↑', Down: '↓', Left: '←', Right: '→' }[code.slice(5)] || code;
+    if (code.indexOf('Shift') === 0) return 'Shift';
+    if (code.indexOf('Control') === 0) return 'Ctrl';
+    if (code.indexOf('Alt') === 0) return 'Alt';
+    return code;
+  }
+
   /** 설정 항목 정본. type = choice | range | toggle */
   const GROUPS = [
     {
@@ -86,6 +102,20 @@
       ],
     },
     {
+      id: 'keys', title: '키 배정', emoji: '⌨️',
+      hint: '화살표 키는 언제나 이동으로 함께 쓸 수 있고, 무기 1~6 과 Esc 는 고정이다.',
+      items: [
+        { id: 'moveF', type: 'key', label: '앞으로', def: 'KeyW' },
+        { id: 'moveB', type: 'key', label: '뒤로', def: 'KeyS' },
+        { id: 'moveL', type: 'key', label: '왼쪽', def: 'KeyA' },
+        { id: 'moveR', type: 'key', label: '오른쪽', def: 'KeyD' },
+        { id: 'sprint', type: 'key', label: '달리기', def: 'ShiftLeft' },
+        { id: 'cast', type: 'key', label: '두루마리 시전', def: 'Space' },
+        { id: 'nextWeapon', type: 'key', label: '무기 바꾸기', def: 'KeyQ' },
+        { id: 'nextSkill', type: 'key', label: '두루마리 바꾸기', def: 'KeyE' },
+      ],
+    },
+    {
       id: 'play', title: '게임', emoji: '🎮',
       items: [
         {
@@ -122,6 +152,10 @@
       if (raw === 'true') return true;
       if (raw === 'false') return false;
       return item.def;
+    }
+    if (item.type === 'key') {
+      if (typeof raw !== 'string' || !/^[A-Za-z0-9]{1,20}$/u.test(raw) || BLOCKED_KEYS.test(raw)) return item.def;
+      return raw;
     }
     if (item.type === 'choice') {
       for (let i = 0; i < item.choices.length; i++) {
@@ -217,6 +251,23 @@
   function flashOn() { return values.hurtFlash && !values.reducedMotion; }
   /** 심도 흐림을 쓸지 (어지러움 줄이기가 켜지면 함께 끈다) */
   function dofOn() { return values.dof && !values.reducedMotion; }
+  /** 배정된 키가 눌려 있는가. Shift·Ctrl·Alt 는 왼쪽/오른쪽 둘 다 인정한다. */
+  function keyDown(keys, id) {
+    const code = values[id];
+    if (keys[code]) return true;
+    if (!/(Left|Right)$/u.test(code)) return false;
+    const base = code.replace(/(Left|Right)$/u, '');
+    return !!(keys[base + 'Left'] || keys[base + 'Right']);
+  }
+
+  /** 같은 키를 이미 쓰는 다른 항목의 id (없으면 null) */
+  function keyConflict(id, code) {
+    for (const other in ITEMS) {
+      if (other !== id && ITEMS[other].type === 'key' && values[other] === code) return other;
+    }
+    return null;
+  }
+
   /** 현재 난이도 표 */
   function difficulty() { return L.DIFFICULTY[values.difficulty] || L.DIFFICULTY.normal; }
   /** 화면 비율을 고려한 카메라 FOV (폰 세로에서는 조금 넓힌다) */
@@ -296,5 +347,9 @@
     dofOn,
     difficulty,
     fovFor,
+    keyLabel,
+    keyDown,
+    keyConflict,
+    BLOCKED_KEYS,
   };
 })(window.LEGO);
