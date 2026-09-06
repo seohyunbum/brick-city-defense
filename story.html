@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f14" />
+<meta name="description" content="브릭 시티 2186 — 셀 애니메이션 톤으로 만든 브릭 단편 「여든여섯 번째 새벽」" />
+<title>여든여섯 번째 새벽 — 브릭 시티 단편</title>
+<link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-32.png" />
+<link rel="stylesheet" href="./src/story.css" />
+</head>
+<body>
+<div id="film">
+  <canvas id="stage"></canvas>
+
+  <div class="bar top"></div>
+  <div class="bar bottom"></div>
+
+  <div id="caption" aria-live="polite"></div>
+
+  <div id="titlecard" class="hidden">
+    <div class="num">86</div>
+    <div class="sub">여든여섯 번째 새벽</div>
+    <p class="note">브릭 시티 2186 · 셀 애니메이션 톤으로 만든 오리지널 브릭 단편.
+      상대는 사람도 동물도 아닌 무인 기계이고, 부서지는 것은 브릭뿐이다.</p>
+  </div>
+
+  <div id="controls">
+    <div id="progress"><div id="progress-fill"></div></div>
+    <button id="btn-play">▶ 재생</button>
+    <button id="btn-restart">↺ 처음부터</button>
+    <button id="btn-reduce" aria-pressed="false">🐢 모션 줄이기 · 끔</button>
+    <button id="btn-subtitle" aria-pressed="true">💬 자막 · 켬</button>
+    <div id="chips"></div>
+  </div>
+
+  <div id="intro">
+    <div class="sheet">
+      <p class="lead">B R I C K &nbsp; C I T Y &nbsp; 2 1 8 6</p>
+      <h1>여든여섯 번째 새벽</h1>
+      <p>미래의 브릭 시티. 벽 바깥에서 낡은 기계 무리가 다가오고,
+        네 다리로 걷는 <b>86호기</b>가 아침을 지키러 나간다.<br />
+        약 74초짜리 단편이다. 사람도 동물도 다치지 않고, 부서지는 것은 브릭뿐이다.</p>
+      <p class="keys"><b>Space</b> 재생·멈춤 · <b>R</b> 처음부터 · <b>← →</b> 5초 이동</p>
+      <button id="btn-start">▶ 단편 보기</button>
+      <p class="legal">독립 블록 완구 미학으로 만든 오리지널 단편이며, 특정 완구사·애니메이션 제작사와
+        아무 관계가 없고 후원·승인·보증을 받지 않았습니다. 모든 형상은 이 저장소에서 코드로 생성됩니다.</p>
+    </div>
+  </div>
+</div>
+
+<script src="./vendor/three.min.js"></script>
+<script src="./src/rounded-box.js"></script>
+<script src="./src/bricks.js"></script>
+<script src="./src/minifig.js"></script>
+<script src="./src/rng.js"></script>
+<script src="./src/motion.js"></script>
+<script src="./src/cel.js"></script>
+<script src="./src/mech86.js"></script>
+<script src="./src/story-set.js"></script>
+<script src="./src/story86.js"></script>
+<script src="./src/story-app.js"></script>
+</body>
+</html>

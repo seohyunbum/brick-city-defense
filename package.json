@@ -9,7 +9,8 @@
   "scripts": {
     "verify:static": "node scripts/quality-gate.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "verify": "npm run verify:static && npm run smoke"
+    "verify": "npm run verify:static && npm run smoke && npm run smoke:story",
+    "smoke:story": "node scripts/smoke-story.mjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

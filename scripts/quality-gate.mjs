@@ -83,7 +83,23 @@ if (/<script[^>]+src=["']https?:/iu.test(index) || /@import\s+url\(["']?https?:/
   fail('CDN 또는 원격 런타임 의존성 발견');
 }
 
-const runtimeCode = [...walk('src'), 'index.html'].map(read).join('\n');
+const story = read('story.html');
+// 단편(story.html)도 같은 실행 계약을 지킨다: file:// 더블클릭 · CDN 금지 · 모듈 순서
+if (/<script[^>]+src=["']https?:/iu.test(story) || /@import\s+url\(["']?https?:/iu.test(read('src/story.css'))) {
+  fail('단편 페이지에 CDN 또는 원격 런타임 의존성 발견');
+}
+if (!index.includes('./story.html')) fail('시작 화면에서 단편(story.html) 로 가는 길이 없다');
+const storyOrder = ['./src/bricks.js', './src/minifig.js', './src/motion.js', './src/cel.js',
+  './src/mech86.js', './src/story-set.js', './src/story86.js', './src/story-app.js'];
+let previousStory = -1;
+for (const path of storyOrder) {
+  const at = story.indexOf(path);
+  if (at < 0) fail(`단편 모듈 누락: ${path}`);
+  else if (at < previousStory) fail(`단편 모듈 로드 순서 불일치: ${path}`);
+  previousStory = Math.max(previousStory, at);
+}
+
+const runtimeCode = [...walk('src'), 'index.html', 'story.html'].map(read).join('\n');
 if (!runtimeCode.includes('THREE.ACESFilmicToneMapping') || !runtimeCode.includes('THREE.MeshPhysicalMaterial') ||
     !runtimeCode.includes('THREE.PMREMGenerator') || !runtimeCode.includes('RoundedBoxGeometry')) {
   fail('PBR/ACES/PMREM/라운드 엣지 그래픽 계약 누락');
@@ -155,7 +171,7 @@ for (const path of walk('vendor')) {
   if (!registered.has(path)) fail(`manifest 미등록 vendor 파일: ${path}`);
 }
 
-const runtimeFiles = ['index.html', 'manifest.webmanifest', ...walk('src'), ...walk('vendor'), ...walk('assets/icons'), ...walk('assets/external')];
+const runtimeFiles = ['index.html', 'story.html', 'manifest.webmanifest', ...walk('src'), ...walk('vendor'), ...walk('assets/icons'), ...walk('assets/external')];
 let runtimeBytes = 0;
 for (const path of runtimeFiles) {
   const size = statSync(join(root, path)).size;
@@ -178,6 +194,9 @@ const lineLimit = {
   'src/director.js': 192, 'src/props.js': 183, 'src/interiors.js': 153, 'src/enemies.js': 484,
   'src/combat.js': 150, 'src/creatures.js': 265, 'src/creature-mesh.js': 335,
   'src/dex.js': 180, 'src/companions.js': 370,
+  // 단편(story.html) 모듈. 연출(story86)과 세트(story-set)를 갈라 둔 상태로 잠근다.
+  'src/motion.js': 205, 'src/cel.js': 270, 'src/mech86.js': 345,
+  'src/story-set.js': 360, 'src/story86.js': 510, 'src/story-app.js': 190,
 };
 for (const [path, limit] of Object.entries(lineLimit)) {
   const lines = read(path).split(/\r?\n/u).length - 1;

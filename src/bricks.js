@@ -63,6 +63,20 @@ window.LEGO = window.LEGO || {};
     lookSun: 0xffedcb,
     lookFill: 0xbcdcff,
     lookAmbient: 0xfff4e6,
+    // 단편 영화(story.html)의 셀 룩 전용 — 하늘·안개·잉크선·기계 계열.
+    // 자유 RGB 금지 규칙을 지키려고 시네마틱 색도 전부 여기에 모은다.
+    cineInk: 0x141a20,
+    cineNight: 0x18304f,
+    cineDawnHigh: 0x2f5a92,
+    cineDawnLow: 0xf2a45c,
+    cineHaze: 0x9db8d2,
+    cineDawnHaze: 0xd8ac86,
+    cineRim: 0xffd8a8,
+    cineSun: 0xffe0a3,
+    cineSteel: 0x8d96a0,
+    cineScrap: 0x545b63,
+    cineScrapDark: 0x30363d,
+    cineEye: 0xffa23c,
   };
 
   // ---------------------------------------------------------------- 텍스처

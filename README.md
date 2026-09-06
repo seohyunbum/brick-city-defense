@@ -15,6 +15,8 @@
   powershell -ExecutionPolicy Bypass -File .\scripts\install-desktop-shortcut.ps1
   ```
 - **아이용**: `index.html` 을 더블클릭 (인터넷 없어도 됨. three.js 를 저장소에 같이 넣어두었다)
+- **단편 영화**: `story.html` 을 더블클릭하거나 시작 화면의 `🎬 미래의 이야기` 를 누른다 —
+  미래의 브릭 시티를 그린 74초짜리 셀 애니메이션 톤 단편 「여든여섯 번째 새벽」
 - **개발 환경 준비**: `npm ci` · **전체 검증**: `npm run verify`
 
 ### 품질 계약
@@ -24,6 +26,7 @@
 통과하기 전에는 "고퀄리티 완성판"으로 판정하지 않는다.
 
 - 게임 설계: [`docs/GAME_DESIGN_SPEC.md`](docs/GAME_DESIGN_SPEC.md)
+- 단편 영화: [`docs/STORY_86_SHORT_FILM.md`](docs/STORY_86_SHORT_FILM.md)
 - 기술 구조: [`docs/TECHNICAL_ARCHITECTURE.md`](docs/TECHNICAL_ARCHITECTURE.md)
 - 아트·오디오: [`docs/ART_AUDIO_BIBLE.md`](docs/ART_AUDIO_BIBLE.md)
 - 외부 자산 조달: [`docs/EXTERNAL_ASSET_ACQUISITION.md`](docs/EXTERNAL_ASSET_ACQUISITION.md)
@@ -31,7 +34,8 @@
 - QA·배포: [`docs/QA_PERFORMANCE_RELEASE_GATES.md`](docs/QA_PERFORMANCE_RELEASE_GATES.md)
 - 감사·실행계획: [`docs/AUDIT_2026-08-19.md`](docs/AUDIT_2026-08-19.md), [`docs/PRODUCTION_PLAN.md`](docs/PRODUCTION_PLAN.md)
 
-정적 게이트만 실행하려면 `npm run verify:static`, 브라우저 스모크만 실행하려면 `npm run smoke`를 쓴다.
+정적 게이트만 실행하려면 `npm run verify:static`, 브라우저 스모크만 실행하려면 `npm run smoke`,
+단편 스모크만 실행하려면 `npm run smoke:story` 를 쓴다.
 CI는 두 검증을 모두 통과한 commit만 GitHub Pages에 배포한다.
 
 ### 손에 무엇을 드는가 (핵심 규칙)
