@@ -72,12 +72,20 @@
   }
   Spring.prototype.set = function (value) { this.value = value; this.velocity = 0; return this; };
   Spring.prototype.update = function (target, dt) {
-    // 큰 dt 에서 발산하지 않게 잘라 쓴다(탭 전환 복귀 등)
-    if (dt > 0.05) dt = 0.05;
+    if (dt <= 0) return this.value;
+    if (dt > 0.1) dt = 0.1;               // 탭 전환 복귀처럼 한참 쉰 프레임은 잘라 쓴다
     const w = this.freq * Math.PI * 2;
-    const a = -2 * this.zeta * w * this.velocity - w * w * (this.value - target);
-    this.velocity += a * dt;
-    this.value += this.velocity * dt;
+    // 명시적 적분은 w·dt 가 커지면 발산한다(느린 기기에서 화면이 날아가는 원인).
+    // 안전한 크기로 쪼개서 적분한다 — 스칼라 연산이라 몇 번 더 돌아도 싸다.
+    const maxStep = 0.4 / Math.max(w, 1e-3);
+    let steps = Math.ceil(dt / maxStep);
+    if (steps > 16) steps = 16;
+    const h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      const a = -2 * this.zeta * w * this.velocity - w * w * (this.value - target);
+      this.velocity += a * h;
+      this.value += this.velocity * h;
+    }
     return this.value;
   };
 

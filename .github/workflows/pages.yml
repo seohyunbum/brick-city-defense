@@ -44,6 +44,11 @@ jobs:
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
 
+      - name: Pilot mode smoke
+        run: npm run smoke:pilot
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome
+
       - name: Keep smoke evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -52,6 +57,7 @@ jobs:
           path: |
             .smoke/
             .smoke-story/
+            .smoke-pilot/
           retention-days: 7
           if-no-files-found: warn
           include-hidden-files: true

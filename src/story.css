@@ -114,3 +114,76 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
 #btn-start { margin-top: 16px; font-size: 17px; padding: 12px 26px; background: var(--amber); color: var(--ink); border: none; font-weight: 700; }
 #btn-start:hover { filter: brightness(1.08); }
 .legal { font-size: 12px; color: var(--steel); line-height: 1.6; margin-top: 16px; }
+
+/* =========================================================================
+ * 조종 모드 HUD — 1인칭 조종석
+ * ========================================================================= */
+#pilot-hud { position: fixed; inset: 0; z-index: 7; pointer-events: none; }
+#pilot-hud.hidden { display: none !important; }
+
+/* 조준점 */
+#p-cross { position: fixed; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+#p-cross span { position: absolute; background: rgba(255, 255, 255, 0.92); box-shadow: 0 0 4px rgba(0, 0, 0, 0.9); }
+#p-cross span:nth-child(1) { left: 50%; top: 0; width: 2px; height: 12px; margin-left: -1px; }
+#p-cross span:nth-child(2) { left: 50%; bottom: 0; width: 2px; height: 12px; margin-left: -1px; }
+#p-cross span:nth-child(3) { top: 50%; left: 0; height: 2px; width: 12px; margin-top: -1px; }
+#p-cross span:nth-child(4) { top: 50%; right: 0; height: 2px; width: 12px; margin-top: -1px; }
+#p-cross i { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px;
+  background: var(--amber); border-radius: 50%; }
+
+/* 맞았다 · 맞췄다 표시 */
+#p-hurt { position: fixed; inset: 0; background: radial-gradient(circle, rgba(201, 26, 9, 0) 45%, rgba(201, 26, 9, 0.55) 100%);
+  opacity: 0; transition: opacity 140ms ease-out; }
+#p-hurt.on { opacity: 1; }
+#p-hit { position: fixed; left: 50%; top: 50%; width: 26px; height: 26px; transform: translate(-50%, -50%) rotate(45deg);
+  border: 3px solid var(--amber); border-radius: 4px; opacity: 0; }
+#p-hit.on { opacity: 1; }
+
+/* 상단 패널 */
+#p-top { position: fixed; top: calc(max(0px, (100vh - (100vw / 2.39)) / 2) + 10px); left: 50%;
+  transform: translateX(-50%); display: flex; gap: 8px; }
+.p-panel { background: rgba(11, 15, 20, 0.66); border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px; padding: 5px 12px; text-align: center; min-width: 84px; }
+.p-panel .l { font-size: 11px; color: var(--steel); letter-spacing: 0.04em; }
+.p-panel .v { font-size: 19px; font-weight: 700; }
+
+/* 하트(장갑) · 총열 온도 */
+#p-vitals { position: fixed; left: 22px; bottom: calc(max(0px, (100vh - (100vw / 2.39)) / 2) + 58px); }
+#p-hearts { font-size: 22px; letter-spacing: 3px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8); }
+.p-heart.out { opacity: 0.35; }
+#p-heat-wrap { position: relative; width: 190px; height: 16px; margin-top: 8px;
+  background: rgba(11, 15, 20, 0.72); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 9px; overflow: hidden; }
+#p-heat-fill { height: 100%; width: 0; background: linear-gradient(to right, #4b9f4a, #f2cd37); }
+#p-heat-fill.hot { background: linear-gradient(to right, #fe8a18, #c91a09); }
+#p-heat-wrap span { position: absolute; inset: 0; font-size: 11px; line-height: 16px; text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+
+#p-toast { position: fixed; left: 50%; top: 24%; transform: translateX(-50%); text-align: center;
+  font-size: clamp(15px, 2vw, 24px); padding: 8px 18px; border-radius: 12px;
+  background: rgba(11, 15, 20, 0.72); opacity: 0; transition: opacity 200ms ease-out; white-space: pre-line; }
+#p-toast.on { opacity: 1; }
+
+#p-keys { position: fixed; left: 0; right: 0; bottom: calc(max(0px, (100vh - (100vw / 2.39)) / 2) + 12px);
+  text-align: center; font-size: 12px; color: var(--steel); }
+
+#pilot-hud.repairing #p-cross { opacity: 0.3; }
+
+/* 폰 조작 */
+#pilot-touch { pointer-events: auto; }
+#pilot-touch.hidden { display: none !important; }
+#stick { position: fixed; left: 22px; bottom: 22px; width: 128px; height: 128px; border-radius: 50%;
+  background: rgba(11, 15, 20, 0.45); border: 2px solid rgba(255, 255, 255, 0.22); }
+#stick-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px;
+  border-radius: 50%; background: rgba(255, 255, 255, 0.32); }
+#pilot-buttons { position: fixed; right: 20px; bottom: 26px; display: flex; align-items: flex-end; gap: 12px; }
+.tbtn { width: 66px; height: 66px; border-radius: 50%; font-size: 26px; background: rgba(11, 15, 20, 0.6); }
+.tbtn.big { width: 92px; height: 92px; font-size: 34px; }
+
+/* 조종 중에는 영화용 UI(레터박스·자막·컷 칩)를 감춘다 */
+body.mode-pilot .bar,
+body.mode-pilot #caption,
+body.mode-pilot #chips,
+body.mode-pilot #progress { display: none !important; }
+body.mode-pilot #p-top { top: 12px; }
+body.mode-pilot #p-vitals { bottom: 74px; }
+body.mode-pilot #p-keys { bottom: 62px; }

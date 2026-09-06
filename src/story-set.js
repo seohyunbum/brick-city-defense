@@ -171,6 +171,43 @@
     return { group: g, lamps, ladder, inner };
   }
 
+  /**
+   * 성벽 바깥 벌판의 바위·브릭 더미. 평평한 벌판에서 "내가 움직이고 있다"를
+   * 알려 주는 시차(parallax) 재료다. 인스턴스 하나로 전부 그린다(드로우콜 1).
+   */
+  function plainProps(scene, rng) {
+    const count = 54;
+    const geo = L.roundedBox(1, 1, 1, 0.12, 1);
+    const mesh = new THREE.InstancedMesh(geo, Cel.toon(C.white), count);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const pos = new THREE.Vector3();
+    const scl = new THREE.Vector3();
+    const color = new THREE.Color();
+    const tints = [C.darkTan, C.tan, C.cineScrapDark, C.reddishBrown, C.cineScrap];
+    for (let i = 0; i < count; i++) {
+      const x = -150 + rng() * 300;
+      const z = -132 - rng() * 118;
+      const w = 2.4 + rng() * 5.5;
+      const h = 0.7 + rng() * 2.2;
+      pos.set(x, h * 0.45, z);
+      e.set(0, rng() * Math.PI, 0);
+      q.setFromEuler(e);
+      scl.set(w, h, w * (0.6 + rng() * 0.7));
+      m.compose(pos, q, scl);
+      mesh.setMatrixAt(i, m);
+      color.setHex(tints[(rng() * tints.length) | 0]);
+      mesh.setColorAt(i, color);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    scene.add(mesh);
+    return mesh;
+  }
+
   /** 스크랩 기계 — 사람도 동물도 아닌 낡은 3각 기계 */
   function scrapWalker(rng) {
     const g = new THREE.Group();
@@ -346,7 +383,7 @@
 
   L.StorySet = {
     TOWER_COLORS, BRICK_COLORS,
-    ground, skyline, wall, hangar, scrapWalker, BrickBurst,
+    ground, skyline, wall, hangar, plainProps, scrapWalker, BrickBurst,
     runCycle, climbCycle, idleCycle,
   };
 })(window.LEGO = window.LEGO || {});

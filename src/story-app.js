@@ -28,6 +28,8 @@
 
     this.playing = false;
     this.subtitles = true;
+    this.mode = 'film';      // film | pilot
+    this.pilot = null;
     this.lastT = 0;
     this._caption = el('caption');
     this._progress = el('progress-fill');
@@ -35,6 +37,7 @@
     this._playBtn = el('btn-play');
     this._reduceBtn = el('btn-reduce');
     this._subBtn = el('btn-subtitle');
+    this._playMode = el('btn-play-mode');
 
     this.setReduceMotion(!!reduce);
     this._wire();
@@ -49,6 +52,14 @@
     el('btn-start').addEventListener('click', () => {
       el('intro').classList.add('hidden');
       self.play();
+    });
+    el('btn-start-play').addEventListener('click', () => {
+      el('intro').classList.add('hidden');
+      self.enterPilot();
+    });
+    el('btn-play-mode').addEventListener('click', () => {
+      if (self.mode === 'pilot') self.exitPilot();
+      else self.enterPilot();
     });
     this._playBtn.addEventListener('click', () => (self.playing ? self.pause() : self.play()));
     el('btn-restart').addEventListener('click', () => self.restart());
@@ -68,6 +79,8 @@
       chips.appendChild(b);
     }
     window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && self.mode === 'pilot') { self.exitPilot(); return; }
+      if (self.mode === 'pilot') return;     // 조종 중에는 재생 단축키를 쓰지 않는다
       if (e.key === ' ') { e.preventDefault(); self.playing ? self.pause() : self.play(); }
       else if (e.key === 'r' || e.key === 'R') self.restart();
       else if (e.key === 'ArrowRight') self.seek(self.story.time + 5);
@@ -114,12 +127,51 @@
     this._caption.classList.toggle('off', !on);
   };
 
+  /** 단편 → 조종 모드. 무대(세트)는 그대로 두고 배우만 치운다. */
+  App.prototype.enterPilot = function () {
+    if (this.mode === 'pilot') return;
+    this.pause();
+    if (!this.pilot) this.pilot = new L.Pilot(this.story, this.camera, this.canvas);
+    this.pilot.hooks.onPause = () => this.exitPilot();
+    this.mode = 'pilot';
+    this.camera.fov = 68;
+    this.camera.updateProjectionMatrix();
+    this._title.classList.add('hidden');
+    this._caption.textContent = '';
+    document.body.classList.add('mode-pilot');
+    this._playMode.textContent = '🎬 단편으로 돌아가기';
+    this.pilot.enter();
+  };
+
+  App.prototype.exitPilot = function () {
+    if (this.mode !== 'pilot') return;
+    this.pilot.exit();
+    this.mode = 'film';
+    document.body.classList.remove('mode-pilot');
+    this._playMode.textContent = '🕹️ 86호기 조종하기';
+    if (document.exitPointerLock) document.exitPointerLock();
+    // 단편은 처음 컷 구도로 돌아간다(배우도 그 컷 자리로 다시 선다)
+    this.story.reset();
+    this.story.seek(0);
+    this.story.update(0, this.camera);
+    this.story.time = 0;
+    this._syncCaption();
+  };
+
   App.prototype._loop = function (nowMs) {
     requestAnimationFrame(this._loop);
     const now = nowMs * 0.001;
     let dt = this.lastT ? now - this.lastT : 0.016;
     this.lastT = now;
     if (dt > 0.05) dt = 0.05;
+
+    if (this.mode === 'pilot') {
+      this.pilot.update(dt);
+      this._shadowTick = (this._shadowTick + 1) % 2;
+      this.renderer.shadowMap.needsUpdate = this._shadowTick === 0;
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
 
     if (this.playing) {
       const before = this.story.finished;

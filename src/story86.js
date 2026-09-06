@@ -105,6 +105,7 @@
     S.ground(scene);
     this.city = S.skyline(scene, rng);
     S.wall(scene);
+    S.plainProps(scene, rng);
     this.hangar = S.hangar(scene);
 
     // ----- 86호기
@@ -178,6 +179,9 @@
     this._pendingTarget = null;
     this.burst.hideAll();
     this.sky.setColors(C.cineNight, C.cineDawnHigh, C.cineDawnLow, C.cineDawnHaze);
+    if (this.scene.fog) this.scene.fog.color.setHex(C.cineDawnHaze);
+    this.horizonDust.points.visible = true;
+    this.dust.points.visible = true;
     this.sun.position.set(46, 12, -262);
   };
 
