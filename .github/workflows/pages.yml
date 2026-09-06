@@ -39,12 +39,19 @@ jobs:
           CHROMIUM_PATH: /usr/bin/google-chrome
           SMOKE_SOAK_MS: '15000'
 
+      - name: Short film smoke
+        run: npm run smoke:story
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome
+
       - name: Keep smoke evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: smoke-evidence
-          path: .smoke/
+          path: |
+            .smoke/
+            .smoke-story/
           retention-days: 7
           if-no-files-found: warn
           include-hidden-files: true
@@ -72,7 +79,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p _site
-          cp index.html manifest.webmanifest _site/
+          cp index.html story.html manifest.webmanifest _site/
           cp -R src vendor _site/
           mkdir -p _site/assets
           cp -R assets/icons _site/assets/

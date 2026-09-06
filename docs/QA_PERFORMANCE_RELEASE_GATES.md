@@ -14,6 +14,11 @@
 
 `npm run smoke`는 file origin 부팅, console/page error 0, 화면, 무기·스킬, 실제 키 이동, 자유 이동·청크 스트리밍, 안전지대 평화, 위험 구역 서식, 게임오버 없음, 브릭 도감(생물 36종 모양·무적·기록·도감 화면), 저장 차단 fallback(점수와 도감 양쪽), 오디오 voice cap, 실제 world+postfx+hands 패스의 draw calls/triangles를 검사한다.
 
+`npm run smoke:story`는 단편(`story.html`)을 같은 file origin에서 열어 console/page error 0,
+여섯 컷 재생과 컷마다 바뀌는 자막, 실제 렌더 패스 예산, 보행 중 접지한 발의 미끄러짐,
+모션 줄이기·자막 끄기 토글, 마지막 타이틀 카드를 검사하고 컷별 screenshot을 `.smoke-story/` 에 남긴다
+(최근 실측 draw calls 336, triangles 46,792, 접지 발 미끄러짐 6.4%).
+
 브릭 도감 검사는 세 가지를 따로 본다. ① 36종 전부 병합 지오메트리 3개가 비어 있지 않다.
 ② 무기 10회와 범위 피해 9999 이후에도 마릿수가 그대로다(생물은 공격 대상이 아니다 — `CLAUDE.md §5`).
 ③ 생물 7 + 몬스터 3 을 한 화면에 세운 프레임이 드로우콜 650 / 삼각형 125,000 예산 안에 있다
