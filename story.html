@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0b0f14" />
-<meta name="description" content="브릭 시티 2186 — 셀 애니메이션 톤으로 만든 브릭 단편 「여든여섯 번째 새벽」" />
+<meta name="description" content="브릭 시티 2186 — 셀 애니메이션 톤 단편 「여든여섯 번째 새벽」과 86호기 1인칭 조종 모드" />
 <title>여든여섯 번째 새벽 — 브릭 시티 단편</title>
 <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/icon-32.png" />
 <link rel="stylesheet" href="./src/story.css" />
@@ -25,12 +25,47 @@
       상대는 사람도 동물도 아닌 무인 기계이고, 부서지는 것은 브릭뿐이다.</p>
   </div>
 
+
+  <!-- ================= 조종 모드 HUD ================= -->
+  <div id="pilot-hud" class="hidden">
+    <div id="p-hurt"></div>
+    <div id="p-cross"><span></span><span></span><span></span><span></span><i></i></div>
+    <div id="p-hit"></div>
+
+    <div id="p-top">
+      <div class="p-panel"><div class="l">웨이브</div><div class="v" id="p-wave">0</div></div>
+      <div class="p-panel"><div class="l">쓰러뜨린 기계</div><div class="v" id="p-kills">0</div></div>
+      <div class="p-panel"><div class="l">최고 기록</div><div class="v" id="p-best">0</div></div>
+      <div class="p-panel"><div class="l">남은 무리</div><div class="v" id="p-enemies">0</div></div>
+    </div>
+
+    <div id="p-toast"></div>
+
+    <div id="p-vitals">
+      <div id="p-hearts"></div>
+      <div id="p-heat-wrap"><div id="p-heat-fill"></div><span id="p-heat-text">총열 시원함</span></div>
+    </div>
+
+    <div id="p-keys">마우스 <b>왼쪽</b> 기관총 · <b>오른쪽/Space</b> 칼 ·
+      <b>W/S</b> 앞뒤 · <b>A/D</b> 회전 · <b>Shift</b> 질주 · <b>Esc</b> 단편으로</div>
+
+    <!-- 폰 조작 (input.js 가 이 id 들을 찾는다) -->
+    <div id="pilot-touch" class="hidden">
+      <div id="stick"><div id="stick-knob"></div></div>
+      <div id="pilot-buttons">
+        <button id="btn-skill" class="tbtn">🗡️</button>
+        <button id="btn-attack" class="tbtn big">🔫</button>
+      </div>
+    </div>
+  </div>
+
   <div id="controls">
     <div id="progress"><div id="progress-fill"></div></div>
     <button id="btn-play">▶ 재생</button>
     <button id="btn-restart">↺ 처음부터</button>
     <button id="btn-reduce" aria-pressed="false">🐢 모션 줄이기 · 끔</button>
     <button id="btn-subtitle" aria-pressed="true">💬 자막 · 켬</button>
+    <button id="btn-play-mode">🕹️ 86호기 조종하기</button>
     <div id="chips"></div>
   </div>
 
@@ -43,6 +78,9 @@
         약 74초짜리 단편이다. 사람도 동물도 다치지 않고, 부서지는 것은 브릭뿐이다.</p>
       <p class="keys"><b>Space</b> 재생·멈춤 · <b>R</b> 처음부터 · <b>← →</b> 5초 이동</p>
       <button id="btn-start">▶ 단편 보기</button>
+      <button id="btn-start-play">🕹️ 바로 조종하기</button>
+      <p class="keys">조종 모드: 조종석에서 보는 1인칭이다. 칼과 기관총으로 스크랩 군단을 막는다 —
+        쓰러뜨려도 부서지는 건 브릭뿐이고, 하트가 다 닳아도 게임은 끝나지 않는다(수리하고 계속).</p>
       <p class="legal">독립 블록 완구 미학으로 만든 오리지널 단편이며, 특정 완구사·애니메이션 제작사와
         아무 관계가 없고 후원·승인·보증을 받지 않았습니다. 모든 형상은 이 저장소에서 코드로 생성됩니다.</p>
     </div>
@@ -52,6 +90,8 @@
 <script src="./vendor/three.min.js"></script>
 <script src="./src/rounded-box.js"></script>
 <script src="./src/bricks.js"></script>
+<script src="./src/loadout.js"></script>
+<script src="./src/storage.js"></script>
 <script src="./src/minifig.js"></script>
 <script src="./src/rng.js"></script>
 <script src="./src/motion.js"></script>
@@ -59,6 +99,12 @@
 <script src="./src/mech86.js"></script>
 <script src="./src/story-set.js"></script>
 <script src="./src/story86.js"></script>
+<script src="./src/mech-weapons.js"></script>
+<script src="./src/legion.js"></script>
+<script src="./src/audio.js"></script>
+<script src="./src/input.js"></script>
+<script src="./src/pilot-hud.js"></script>
+<script src="./src/pilot.js"></script>
 <script src="./src/story-app.js"></script>
 </body>
 </html>

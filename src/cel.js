@@ -192,6 +192,13 @@
     s[k + 1] = 0.18 + Math.random() * 0.5;
     s[k + 2] = (Math.random() - 0.5) * 0.5;
   };
+  /** 먼지 구역을 통째로 옮긴다(연출 장소가 바뀔 때). 입자는 새 자리에서 다시 뿌린다. */
+  DustField.prototype.moveTo = function (x, y, z) {
+    this.box.x = x; this.box.y = y; this.box.z = z;
+    for (let i = 0; i < this.count; i++) this._respawn(i, true);
+    this.attribute.needsUpdate = true;
+  };
+
   DustField.prototype.update = function (dt, wind) {
     const p = this.positions, s = this.speeds, b = this.box;
     for (let i = 0; i < this.count; i++) {

@@ -146,15 +146,16 @@
     cockpit.add(canopy);
 
     // ----- 포탑: 스터드 발사기 두 문 (총구는 몸통 앞쪽)
+    // 포탑은 갑판 위로 올려 둔다 — 조종석에서 두 포신이 시야 아래쪽에 들어온다
     const turret = new THREE.Group();
-    turret.position.set(0, 1.9, 0.7);
+    turret.position.set(0, 2.5, 0.2);
     chassis.add(turret);
     const turretBase = panel(2.4, 0.9, 2.4, trimColor);
     turret.add(turretBase);
     const cannons = [];
     for (const side of [-1, 1]) {
       const arm = new THREE.Group();
-      arm.position.set(side * 1.5, 0.2, 0);
+      arm.position.set(side * 1.95, 0.2, 0.2);
       turret.add(arm);
       const barrel = new THREE.Mesh(L.cyl(0.34, 0.4, 3.4, 12), Cel.toon(trimColor));
       barrel.rotation.x = Math.PI / 2;

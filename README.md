@@ -15,8 +15,10 @@
   powershell -ExecutionPolicy Bypass -File .\scripts\install-desktop-shortcut.ps1
   ```
 - **아이용**: `index.html` 을 더블클릭 (인터넷 없어도 됨. three.js 를 저장소에 같이 넣어두었다)
-- **단편 영화**: `story.html` 을 더블클릭하거나 시작 화면의 `🎬 미래의 이야기` 를 누른다 —
-  미래의 브릭 시티를 그린 74초짜리 셀 애니메이션 톤 단편 「여든여섯 번째 새벽」
+- **단편 영화 + 조종 모드**: `story.html` 을 더블클릭하거나 시작 화면의 `🎬 미래의 이야기` 를 누른다 —
+  미래의 브릭 시티를 그린 74초짜리 셀 애니메이션 톤 단편 「여든여섯 번째 새벽」.
+  같은 화면의 `🕹️ 86호기 조종하기` 를 누르면 **조종석 1인칭**으로 바뀌어, 기체에 달린
+  칼과 기관총으로 스크랩 군단을 막는다(게임오버 없음)
 - **개발 환경 준비**: `npm ci` · **전체 검증**: `npm run verify`
 
 ### 품질 계약
@@ -35,7 +37,7 @@
 - 감사·실행계획: [`docs/AUDIT_2026-08-19.md`](docs/AUDIT_2026-08-19.md), [`docs/PRODUCTION_PLAN.md`](docs/PRODUCTION_PLAN.md)
 
 정적 게이트만 실행하려면 `npm run verify:static`, 브라우저 스모크만 실행하려면 `npm run smoke`,
-단편 스모크만 실행하려면 `npm run smoke:story` 를 쓴다.
+단편 스모크만 실행하려면 `npm run smoke:story`, 조종 모드 스모크만 실행하려면 `npm run smoke:pilot` 을 쓴다.
 CI는 두 검증을 모두 통과한 commit만 GitHub Pages에 배포한다.
 
 ### 손에 무엇을 드는가 (핵심 규칙)

@@ -89,8 +89,9 @@ if (/<script[^>]+src=["']https?:/iu.test(story) || /@import\s+url\(["']?https?:/
   fail('단편 페이지에 CDN 또는 원격 런타임 의존성 발견');
 }
 if (!index.includes('./story.html')) fail('시작 화면에서 단편(story.html) 로 가는 길이 없다');
-const storyOrder = ['./src/bricks.js', './src/minifig.js', './src/motion.js', './src/cel.js',
-  './src/mech86.js', './src/story-set.js', './src/story86.js', './src/story-app.js'];
+const storyOrder = ['./src/bricks.js', './src/loadout.js', './src/minifig.js', './src/motion.js', './src/cel.js',
+  './src/mech86.js', './src/story-set.js', './src/story86.js', './src/mech-weapons.js', './src/legion.js',
+  './src/input.js', './src/pilot-hud.js', './src/pilot.js', './src/story-app.js'];
 let previousStory = -1;
 for (const path of storyOrder) {
   const at = story.indexOf(path);
@@ -120,6 +121,19 @@ if (/\b(damage|kill|hp|attack)\b/iu.test(companionCode)) {
 if (!read('src/enemies.js').includes('L.Enemies') || read('src/enemies.js').includes('Creatures')) {
   fail('몬스터 모듈이 브릭 생물 표를 참조한다 — 생물이 상대로 쓰일 수 있다');
 }
+
+// 조종 모드(86호기)도 같은 하드룰을 지킨다.
+// ① 상대는 무인 기계뿐이다 — 미니피그·브릭 생물을 표적 코드가 만지지 않는다.
+// ② 게임오버로 진행을 막지 않는다 — 장갑이 0 이면 수리하고 계속한다.
+const legionCode = read('src/legion.js');
+if (/minifig|Creatures|citizen/iu.test(legionCode)) {
+  fail('적 모듈이 시민·브릭 생물을 참조한다 — 상대는 무인 기계뿐이어야 한다');
+}
+if (!legionCode.includes('scrapWalker')) fail('적 모듈이 무생물 기계 팩토리를 쓰지 않는다');
+const pilotCode = read('src/pilot.js');
+// 주석이 아니라 실제 호출을 본다(sfx.gameOver 같은 종료 연출이 들어오면 막는다)
+if (/\bgameOver\s*\(/u.test(pilotCode)) fail('조종 모드에 게임오버 경로가 들어왔다');
+if (!/repair/u.test(pilotCode)) fail('조종 모드에 장갑 0 이후의 수리 경로가 없다');
 
 const packageJson = JSON.parse(read('package.json'));
 if (packageJson.devDependencies?.playwright !== '1.62.1') fail('Playwright 버전이 정확히 고정되지 않음');
@@ -195,8 +209,10 @@ const lineLimit = {
   'src/combat.js': 150, 'src/creatures.js': 265, 'src/creature-mesh.js': 335,
   'src/dex.js': 180, 'src/companions.js': 370,
   // 단편(story.html) 모듈. 연출(story86)과 세트(story-set)를 갈라 둔 상태로 잠근다.
-  'src/motion.js': 205, 'src/cel.js': 270, 'src/mech86.js': 345,
-  'src/story-set.js': 360, 'src/story86.js': 510, 'src/story-app.js': 190,
+  'src/motion.js': 210, 'src/cel.js': 275, 'src/mech86.js': 345,
+  'src/story-set.js': 395, 'src/story86.js': 505, 'src/story-app.js': 240,
+  // 조종 모드 모듈
+  'src/mech-weapons.js': 190, 'src/legion.js': 220, 'src/pilot.js': 310, 'src/pilot-hud.js': 95,
 };
 for (const [path, limit] of Object.entries(lineLimit)) {
   const lines = read(path).split(/\r?\n/u).length - 1;
