@@ -145,6 +145,25 @@ if (sword.downed < 1) failures.push('칼을 휘둘러도 기계가 쓰러지지 
 void staged;
 await page.screenshot({ path: resolve(outDir, '04-sword.png') });
 
+// ---- 다섯 번째 무리에는 큰 기계가 한 대 섞인다
+await page.evaluate(() => {
+  const p = window.BRICK_STORY.pilot;
+  p.legion.reset();
+  p.legion.wave = 4;
+  p.legion.startWave(p.mech.position);
+});
+const boss = await page.waitForFunction(() => {
+  const p = window.BRICK_STORY.pilot;
+  const u = p.legion.units.find((unit) => unit.alive && unit.boss);
+  return u ? { scale: u.group.scale.x, hp: u.hp, wave: p.legion.wave } : false;
+}, null, { timeout: 60000 }).then((h) => h.jsonValue()).catch(() => null);
+if (!boss) failures.push('다섯 번째 무리에 큰 기계가 나오지 않았다');
+else {
+  if (boss.scale < 1.5) failures.push(`큰 기계가 크지 않다: scale ${boss.scale}`);
+  if (boss.hp < 6) failures.push(`큰 기계가 단단하지 않다: hp ${boss.hp}`);
+}
+await page.screenshot({ path: resolve(outDir, '04c-boss.png') });
+
 // ---- 게임오버가 없다: 장갑이 0 이 되면 수리하고 계속한다
 const inRepair = await page.evaluate(() => {
   const p = window.BRICK_STORY.pilot;
@@ -226,5 +245,6 @@ if (failures.length) {
 }
 console.log(`조종 모드 스모크 통과: 웨이브 ${wave.wave}, 기관총 격파 ${gun.downed}, 칼 격파 ${sword.downed}, ` +
   `이동 ${walked.moved.toFixed(1)} 유닛, 수리 후 장갑 ${repaired}, ` +
+  `큰 기계 hp ${boss ? boss.hp : 0}, ` +
   `기계 ${budget.enemies}대 동시 프레임 드로우콜 ${budget.calls}/${MAX_DRAWCALLS}, ` +
   `삼각형 ${budget.triangles}/${MAX_TRIANGLES}`);

@@ -212,7 +212,7 @@ const lineLimit = {
   'src/motion.js': 210, 'src/cel.js': 275, 'src/mech86.js': 345,
   'src/story-set.js': 395, 'src/story86.js': 505, 'src/story-app.js': 240,
   // 조종 모드 모듈
-  'src/mech-weapons.js': 190, 'src/legion.js': 220, 'src/pilot.js': 310, 'src/pilot-hud.js': 95,
+  'src/mech-weapons.js': 190, 'src/legion.js': 240, 'src/pilot.js': 330, 'src/pilot-hud.js': 100,
 };
 for (const [path, limit] of Object.entries(lineLimit)) {
   const lines = read(path).split(/\r?\n/u).length - 1;

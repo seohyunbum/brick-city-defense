@@ -158,6 +158,14 @@ button:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
 #p-heat-wrap span { position: absolute; inset: 0; font-size: 11px; line-height: 16px; text-align: center;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
 
+#p-sword-wrap { position: relative; width: 190px; height: 16px; margin-top: 6px;
+  background: rgba(11, 15, 20, 0.72); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 9px;
+  overflow: hidden; opacity: 0.55; }
+#p-sword-wrap.ready { opacity: 1; border-color: rgba(242, 205, 55, 0.7); }
+#p-sword-fill { height: 100%; width: 100%; background: linear-gradient(to right, #8d96a0, #f4f4f2); }
+#p-sword-wrap span { position: absolute; inset: 0; font-size: 11px; line-height: 16px; text-align: center;
+  color: var(--ink); font-weight: 700; }
+
 #p-toast { position: fixed; left: 50%; top: 24%; transform: translateX(-50%); text-align: center;
   font-size: clamp(15px, 2vw, 24px); padding: 8px 18px; border-radius: 12px;
   background: rgba(11, 15, 20, 0.72); opacity: 0; transition: opacity 200ms ease-out; white-space: pre-line; }

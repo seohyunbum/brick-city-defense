@@ -49,6 +49,7 @@
     this.repair = 0;
     this.gunTimer = 0;
     this.restTimer = 0;
+    this.waveCleared = false;
     this.best = L.Storage.getNumber('brick86-best', null) || 0;
     this._swingSpent = true;
     this._gunSide = false;        // 두 문을 번갈아 쏜다
@@ -66,6 +67,10 @@
     const self = this;
     this.legion.hooks.onHitPlayer = (dmg) => self.hurt(dmg);
     this.legion.hooks.onDown = () => self.onDown();
+    this.legion.hooks.onBoss = () => {
+      self.hud.toast('👑 큰 기계다! 칼이 더 잘 통한다', 2.4);
+      self.sfx.wave();
+    };
     this.input.hooks.pause = () => { if (self.active && self.hooks.onPause) self.hooks.onPause(); };
   }
 
@@ -105,6 +110,7 @@
     this.repair = 0;
     this.gunTimer = 0;
     this.restTimer = 1.6;
+    this.waveCleared = true;      // 첫 무리 전에는 "막았다" 안내를 띄우지 않는다
     this.legion.reset();
     W.reset(this.weapons);
     this.weapons.shoulder.visible = true;      // 칼은 조종 모드에서만 매단다
@@ -214,7 +220,10 @@
       this._hit.copy(this._fwd).multiplyScalar(dist).add(this._muzzle);
       W.addTracer(this.weapons, this._muzzle, this._hit);
       this.sfx.shoot();
-      if (hit) this.legion.hurt(hit.unit, 1);
+      if (hit) {
+        this.legion.hurt(hit.unit, 1);
+        this.hud.hitMark();
+      }
     }
 
     // ----- 칼: 한 번 휘두르는 동안 딱 한 번만 벤다
@@ -236,9 +245,19 @@
 
   Pilot.prototype._waves = function (dt) {
     if (this.legion.spawnLeft > 0 || this.legion.aliveCount() > 0) return;
+    // 무리를 다 막으면 장갑을 한 칸 돌려준다 — 오래 버틸수록 손해만 나지 않게
+    if (this.legion.wave > 0 && !this.waveCleared) {
+      this.waveCleared = true;
+      const healed = this.hearts < MAX_HEARTS;
+      if (healed) this.hearts++;
+      this.hud.toast('✅ ' + this.legion.wave + '번째 무리를 막았다!' +
+        (healed ? '\n🛡️ 장갑 1칸 회복' : ''), 2.4);
+      this.sfx.pickup();
+    }
     this.restTimer -= dt;
     if (this.restTimer > 0) return;
     this.restTimer = 5.0;
+    this.waveCleared = false;
     const n = this.legion.startWave(this.mech.position);
     this.hud.toast('⚙️ ' + n + '번째 무리가 온다', 2.2);
     this.sfx.wave();
@@ -294,6 +313,9 @@
       enemies: this.legion.aliveCount() + this.legion.spawnLeft,
       repair: this.repair,
       speed: Math.abs(this.speed),
+      // 칼 준비 상태(0=휘두르는 중, 1=바로 쓸 수 있음)
+      sword: this.weapons.swing < 0 ? 1 : M.clamp01(this.weapons.swing / W.SWING_TIME),
+      swordReady: this.weapons.swing < 0,
     });
   };
 
