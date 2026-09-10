@@ -12,6 +12,8 @@
     this.hearts = el('p-hearts');
     this.heatFill = el('p-heat-fill');
     this.heatText = el('p-heat-text');
+    this.swordFill = el('p-sword-fill');
+    this.swordWrap = el('p-sword-wrap');
     this.wave = el('p-wave');
     this.kills = el('p-kills');
     this.best = el('p-best');
@@ -62,6 +64,10 @@
     this.heatFill.classList.toggle('hot', s.overheated);
     this.heatText.textContent = s.overheated ? '총열 과열 — 식는 중'
       : s.heat > 0.6 ? '총열 뜨거움' : '총열 시원함';
+    if (this.swordFill) {
+      this.swordFill.style.width = (s.sword * 100).toFixed(1) + '%';
+      this.swordWrap.classList.toggle('ready', !!s.swordReady);
+    }
     this.wave.textContent = String(s.wave);
     this.kills.textContent = String(s.kills);
     this.best.textContent = String(s.best);

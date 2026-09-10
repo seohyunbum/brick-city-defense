@@ -35,7 +35,7 @@
         hitTimer: 0, flash: 0,
       });
     }
-    this.hooks = { onHitPlayer: null, onDown: null };
+    this.hooks = { onHitPlayer: null, onDown: null, onBoss: null };
     this.wave = 0;
     this.spawnLeft = 0;
     this.spawnTimer = 0;
@@ -49,7 +49,9 @@
   Legion.prototype.reset = function () {
     for (let i = 0; i < this.units.length; i++) {
       this.units[i].alive = false;
+      this.units[i].boss = false;
       this.units[i].group.visible = false;
+      this.units[i].group.scale.setScalar(1);
     }
     this.wave = 0;
     this.spawnLeft = 0;
@@ -68,6 +70,9 @@
     this.wave++;
     this.spawnLeft = Math.min(this.cap, 2 + this.wave);
     this.spawnTimer = 0;
+    // 처음 두 무리는 한 대씩 천천히 들어온다 — 조작을 익힐 시간을 준다
+    this.spawnGap = this.wave <= 2 ? 1.1 : 0.55;
+    this.bossPending = this.wave % 5 === 0;      // 다섯 번째마다 큰 기계 한 대
     this._around = aroundPos;
     return this.wave;
   };
@@ -87,6 +92,14 @@
     unit.hp = 2 + Math.floor(this.wave / 3);      // 웨이브가 오를수록 조금 단단해진다
     unit.speed = 3.0 + Math.min(2.2, this.wave * 0.18);
     unit.hitTimer = 0;
+    // 큰 기계: 크고 단단하지만 느리다. 무리마다 한 대만 나온다.
+    unit.boss = !!this.bossPending;
+    if (unit.boss) {
+      this.bossPending = false;
+      unit.hp *= 3;
+      unit.speed *= 0.62;
+    }
+    unit.group.scale.setScalar(unit.boss ? 1.7 : 1);
     return unit;
   };
 
@@ -96,8 +109,12 @@
     if (this.spawnLeft > 0) {
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
-        if (this._spawnOne(this._around || targetPos)) this.spawnLeft--;
-        this.spawnTimer = 0.55;
+        const spawned = this._spawnOne(this._around || targetPos);
+        if (spawned) {
+          this.spawnLeft--;
+          if (spawned.boss && this.hooks.onBoss) this.hooks.onBoss(spawned);
+        }
+        this.spawnTimer = this.spawnGap || 0.55;
       }
     }
 
@@ -158,7 +175,8 @@
     }
     unit.alive = false;
     unit.group.visible = false;
-    this.burst.pop(unit.group.position.x, 2.8, unit.group.position.z, 16, 7);
+    // 큰 기계는 더 많은 브릭으로 흩어진다
+    this.burst.pop(unit.group.position.x, 2.8, unit.group.position.z, unit.boss ? 26 : 16, unit.boss ? 9 : 7);
     if (this.hooks.onDown) this.hooks.onDown(unit);
     return true;
   };
@@ -177,14 +195,16 @@
       const u = this.units[i];
       if (!u.alive) continue;
       const p = u.group.position;
-      this._ray.set(p.x - origin.x, p.y + 3.4 - origin.y, p.z - origin.z);
+      const height = u.boss ? 5.8 : 3.4;
+      this._ray.set(p.x - origin.x, p.y + height - origin.y, p.z - origin.z);
       const t = this._ray.dot(dir);
       if (t < 0 || t > bestT) continue;
       // 광선에서 유닛 중심까지의 수직 거리
       const px = this._ray.x - dir.x * t;
       const py = this._ray.y - dir.y * t;
       const pz = this._ray.z - dir.z * t;
-      if (px * px + py * py + pz * pz > r * r) continue;
+      const rr = u.boss ? r * 1.7 : r;
+      if (px * px + py * py + pz * pz > rr * rr) continue;
       best = u;
       bestT = t;
     }
