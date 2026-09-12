@@ -125,3 +125,7 @@ LEGO®는 LEGO Group of companies의 상표이며, LEGO Group은 이 독립 사�
 ## Graphics pipeline
 
 The game uses an offline-safe PBR brick look: physical ABS finishes, PMREM reflections, ACES tone mapping, selective rounded edges and a readability-capped miniature lens pass. The design, UE5.8 authoring role, CC0 sourcing policy and measurable visual gates are documented in [docs/GRAPHICS_LOOKDEV_PIPELINE.md](docs/GRAPHICS_LOOKDEV_PIPELINE.md).
+
+## 산출물 출처 검증
+
+최종 배포물의 비가시 서명·전체 파일 해시·고정 공개키 검증은 [출처 검증 안내](provenance/README.md)를 따른다. 빌드가 성공하려면 서명 검증도 통과해야 한다.
