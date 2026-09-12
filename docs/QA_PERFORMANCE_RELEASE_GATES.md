@@ -136,3 +136,8 @@ Playwright smoke는 CI 호환을 위해 headless software/installed Chrome을 �
 The Edge/Chromium smoke measures the final composited frame. Required values are defined in [GRAPHICS_LOOKDEV_PIPELINE.md](./GRAPHICS_LOOKDEV_PIPELINE.md): ACES and PMREM enabled; at least 12 unique physical materials and 12 rounded geometries; aperture <= 0.30; 900p maximum blur <= 4.5 px; vignette <= 0.10; mean luminance 0.30–0.86; luminance standard deviation >= 0.12; clipped pixels <= 28%; crushed pixels <= 18%.
 
 These broad catastrophic-regression limits do not replace human golden-view review. Software-renderer FPS remains diagnostic only. Real-hardware p95/p99 frame-time gates remain open until run on the target matrix.
+
+
+## 배포물 출처 게이트 (2026-09-12)
+
+`node scripts/build-pages.mjs`가 승인된 런타임 파일만 `_site/`에 조립하고 비가시 HTML 서명과 전체 파일 매니페스트를 검증한다. 기존 기능·성능·오프라인 게이트는 그대로 유지한다. 개발 문서·원본 자산·검사 evidence를 실행물로 배포하지 않는다. 서명 검증과 원격 등록의 완료 범위는 [운영 안내](../provenance/README.md)를 따른다.

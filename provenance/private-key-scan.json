@@ -1,0 +1,13 @@
+{
+  "project": "brick-city-defense",
+  "scanned_files": 59,
+  "commit_candidate_files": 16,
+  "private_key_exact_matches": 0,
+  "representations_checked": [
+    "base64",
+    "raw",
+    "hex"
+  ],
+  "secret_value_logged": false,
+  "network_used": false
+}

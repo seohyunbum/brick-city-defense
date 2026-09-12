@@ -9,7 +9,10 @@
   "scripts": {
     "verify:static": "node scripts/quality-gate.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "verify": "npm run verify:static && npm run smoke"
+    "verify": "npm run verify:static && npm run smoke",
+    "hbsy:seal": "node scripts/hbsy-release.mjs seal",
+    "hbsy:verify": "node scripts/hbsy-release.mjs verify",
+    "build": "node scripts/build-pages.mjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

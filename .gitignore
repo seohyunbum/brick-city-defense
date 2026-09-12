@@ -1,2 +1,8 @@
 node_modules
 .smoke/
+
+# Reproducible public distribution
+/_site/
+
+# Local Python signer cache
+__pycache__/
