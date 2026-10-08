@@ -6,7 +6,7 @@
 - 공개키 SHA-256: `363071bd27767a1f5e3c916c3f385480e199ae25ebc867cdc8a5a2c624d0a061`
 - 로컬 등록 원장: `provenance/index.jsonl`
 - 배포물: `hbsy.manifest.json`, `hbsy.pubkey`, `hbsy.provenance.json`
-- 서명기 정본: product360-vault의 `scripts/hbsy/hbsy.py`, `release.py`. 복사본은 `scripts/hbsy/vendor-hashes.json`의 SHA-256으로 실행 전에 대조한다.
+- 서명기 정본: 소유자의 비공개 저장소에 있는 `scripts/hbsy/hbsy.py`, `release.py`, `checkpoint.py`. 복사본은 `scripts/hbsy/vendor-hashes.json`의 SHA-256으로 실행 전에 대조한다.
 
 Python 3.10 이상과 `cryptography==46.0.7`이 필요하다. 개인키는 개발 PC의 `~/.hbsy/key` 또는 실행 환경의 `HBSY_SECRET_KEY`에서만 읽는다. 개인키를 저장소·배포 폴더·로그에 넣지 않는다. 공개키·서명·지문만 산출물에 포함한다. 기존 키가 없는 PC에서는 임의로 새 키를 만들지 말고 승인된 신원을 복구한다.
 
